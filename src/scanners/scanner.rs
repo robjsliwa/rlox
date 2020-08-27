@@ -44,6 +44,19 @@ impl Scanner {
       .push(Token::new(token_type, text, literal, self.line));
   }
 
+  fn is_next_match(&mut self, expected: char) -> bool {
+    if self.is_at_end() {
+      return false;
+    }
+
+    if self.source[self.current] != expected {
+      return false;
+    }
+
+    self.current += 1;
+    true
+  }
+
   fn scan_token(&mut self) {
     let c = self.advance();
     match c {
@@ -57,6 +70,34 @@ impl Scanner {
       '+' => self.add_token(TokenType::PLUS),
       ';' => self.add_token(TokenType::SEMICOLON),
       '*' => self.add_token(TokenType::STAR),
+      '!' => {
+        if self.is_next_match('=') {
+          self.add_token(TokenType::BANGEQUAL)
+        } else {
+          self.add_token(TokenType::BANG)
+        }
+      }
+      '=' => {
+        if self.is_next_match('=') {
+          self.add_token(TokenType::EQUALEQUAL)
+        } else {
+          self.add_token(TokenType::EQUAL)
+        }
+      }
+      '<' => {
+        if self.is_next_match('=') {
+          self.add_token(TokenType::LESSEQUAL)
+        } else {
+          self.add_token(TokenType::LESS)
+        }
+      }
+      '>' => {
+        if self.is_next_match('=') {
+          self.add_token(TokenType::GREATEREQUAL)
+        } else {
+          self.add_token(TokenType::GREATER)
+        }
+      }
       _ => report(self.line, "Unexpected character."),
     }
   }
@@ -99,7 +140,6 @@ mod tests {
     ];
 
     for (i, t) in tokens.iter().enumerate() {
-      println!("({}, {:?})", i, t.token_type);
       assert_eq!(assert_tokens[i], t.token_type);
     }
   }
