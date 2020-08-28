@@ -57,6 +57,13 @@ impl Scanner {
     true
   }
 
+  fn peek(&self) -> char {
+    if self.is_at_end() {
+      return '\0';
+    }
+    self.source[self.current]
+  }
+
   fn scan_token(&mut self) {
     let c = self.advance();
     match c {
@@ -98,6 +105,19 @@ impl Scanner {
           self.add_token(TokenType::GREATER)
         }
       }
+      '/' => {
+        if self.is_next_match('/') {
+          while self.peek() != '\n' && !self.is_at_end() {
+            self.advance();
+          }
+        } else {
+          self.add_token(TokenType::SLASH);
+        }
+      }
+      ' ' | '\r' | '\t' => {
+        // ignore whitespace
+      }
+      '\n' => self.line += 1,
       _ => report(self.line, "Unexpected character."),
     }
   }
@@ -136,6 +156,39 @@ mod tests {
       TokenType::MINUS,
       TokenType::LEFTBRACE,
       TokenType::RIGHTBRACE,
+      TokenType::EOF,
+    ];
+
+    for (i, t) in tokens.iter().enumerate() {
+      assert_eq!(assert_tokens[i], t.token_type);
+    }
+  }
+
+  #[test]
+  fn scan_more_complex_tokens() {
+    let text =
+      String::from("// this is a comment\n(( )){} // grouping stuff\n!*+-/=<> <= == // operators");
+    let source = text.chars().collect();
+    let mut scanner = Scanner::new(source);
+    let tokens = scanner.scan_tokens();
+
+    let assert_tokens = vec![
+      TokenType::LEFTPAREN,
+      TokenType::LEFTPAREN,
+      TokenType::RIGHTPAREN,
+      TokenType::RIGHTPAREN,
+      TokenType::LEFTBRACE,
+      TokenType::RIGHTBRACE,
+      TokenType::BANG,
+      TokenType::STAR,
+      TokenType::PLUS,
+      TokenType::MINUS,
+      TokenType::SLASH,
+      TokenType::EQUAL,
+      TokenType::LESS,
+      TokenType::GREATER,
+      TokenType::LESSEQUAL,
+      TokenType::EQUALEQUAL,
       TokenType::EOF,
     ];
 
