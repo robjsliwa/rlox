@@ -1,2 +1,5 @@
 #[derive(Clone, Debug)]
-pub struct Literal {}
+pub enum Literal {
+  StringType(String),
+  NumberType(f64),
+}

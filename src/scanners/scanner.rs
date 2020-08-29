@@ -64,6 +64,29 @@ impl Scanner {
     self.source[self.current]
   }
 
+  fn process_string_literal(&mut self) {
+    while self.peek() != '"' && !self.is_at_end() {
+      if self.peek() == '\n' {
+        self.line += 1;
+      }
+      self.advance();
+    }
+
+    // unterminated string
+    if self.is_at_end() {
+      report(self.line, "Unterminated string.");
+      return;
+    }
+
+    // the closing "
+    self.advance();
+
+    // trim the surrounding quotes
+    let l = &self.source[self.start + 1..self.current - 1];
+    let literal_string: Literal = Literal::StringType(l.into_iter().collect());
+    self.add_token_with_literal(TokenType::STRING, Some(literal_string));
+  }
+
   fn scan_token(&mut self) {
     let c = self.advance();
     match c {
@@ -118,6 +141,7 @@ impl Scanner {
         // ignore whitespace
       }
       '\n' => self.line += 1,
+      '"' => self.process_string_literal(),
       _ => report(self.line, "Unexpected character."),
     }
   }
@@ -187,6 +211,40 @@ mod tests {
       TokenType::EQUAL,
       TokenType::LESS,
       TokenType::GREATER,
+      TokenType::LESSEQUAL,
+      TokenType::EQUALEQUAL,
+      TokenType::EOF,
+    ];
+
+    for (i, t) in tokens.iter().enumerate() {
+      assert_eq!(assert_tokens[i], t.token_type);
+    }
+  }
+
+  #[test]
+  fn scan_string_literal_tokens() {
+    let text =
+      String::from("// this is a comment\n(( )){} // grouping stuff\n!*+-/=<> \"test string literal\" <= == // operators");
+    let source = text.chars().collect();
+    let mut scanner = Scanner::new(source);
+    let tokens = scanner.scan_tokens();
+
+    let assert_tokens = vec![
+      TokenType::LEFTPAREN,
+      TokenType::LEFTPAREN,
+      TokenType::RIGHTPAREN,
+      TokenType::RIGHTPAREN,
+      TokenType::LEFTBRACE,
+      TokenType::RIGHTBRACE,
+      TokenType::BANG,
+      TokenType::STAR,
+      TokenType::PLUS,
+      TokenType::MINUS,
+      TokenType::SLASH,
+      TokenType::EQUAL,
+      TokenType::LESS,
+      TokenType::GREATER,
+      TokenType::STRING,
       TokenType::LESSEQUAL,
       TokenType::EQUALEQUAL,
       TokenType::EOF,
