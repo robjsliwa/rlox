@@ -87,6 +87,41 @@ impl Scanner {
     self.add_token_with_literal(TokenType::STRING, Some(literal_string));
   }
 
+  fn peek_next(&self) -> char {
+    if self.current + 1 >= self.source.len() {
+      return '\0';
+    }
+    return self.source[self.current + 1];
+  }
+
+  fn is_digit(&self, c: char) -> bool {
+    c >= '0' && c <= '9'
+  }
+
+  fn process_number_literal(&mut self) {
+    while self.is_digit(self.peek()) {
+      self.advance();
+    }
+
+    if self.peek() == '.' && self.is_digit(self.peek_next()) {
+      // consume the "."
+      self.advance();
+
+      while self.is_digit(self.peek()) {
+        self.advance();
+      }
+    }
+
+    let l = &self.source[self.start..self.current];
+    let number_as_string: String = l.into_iter().collect();
+    if let Ok(n) = number_as_string.parse::<f64>() {
+      let literal_number: Literal = Literal::NumberType(n);
+      self.add_token_with_literal(TokenType::NUMBER, Some(literal_number));
+    } else {
+      report(self.line, "Invalid number");
+    }
+  }
+
   fn scan_token(&mut self) {
     let c = self.advance();
     match c {
@@ -142,6 +177,7 @@ impl Scanner {
       }
       '\n' => self.line += 1,
       '"' => self.process_string_literal(),
+      '0'..='9' => self.process_number_literal(),
       _ => report(self.line, "Unexpected character."),
     }
   }
@@ -245,6 +281,42 @@ mod tests {
       TokenType::LESS,
       TokenType::GREATER,
       TokenType::STRING,
+      TokenType::LESSEQUAL,
+      TokenType::EQUALEQUAL,
+      TokenType::EOF,
+    ];
+
+    for (i, t) in tokens.iter().enumerate() {
+      assert_eq!(assert_tokens[i], t.token_type);
+    }
+  }
+
+  #[test]
+  fn scan_number_literals_tokens() {
+    let text = String::from(
+      "// this is a comment\n((25.77)){} // grouping stuff\n!*+-/=<20> <= == // operators",
+    );
+    let source = text.chars().collect();
+    let mut scanner = Scanner::new(source);
+    let tokens = scanner.scan_tokens();
+
+    let assert_tokens = vec![
+      TokenType::LEFTPAREN,
+      TokenType::LEFTPAREN,
+      TokenType::NUMBER,
+      TokenType::RIGHTPAREN,
+      TokenType::RIGHTPAREN,
+      TokenType::LEFTBRACE,
+      TokenType::RIGHTBRACE,
+      TokenType::BANG,
+      TokenType::STAR,
+      TokenType::PLUS,
+      TokenType::MINUS,
+      TokenType::SLASH,
+      TokenType::EQUAL,
+      TokenType::LESS,
+      TokenType::NUMBER,
+      TokenType::GREATER,
       TokenType::LESSEQUAL,
       TokenType::EQUALEQUAL,
       TokenType::EOF,
