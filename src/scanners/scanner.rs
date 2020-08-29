@@ -2,6 +2,9 @@ use super::error_handler::report;
 use super::literal::Literal;
 use super::token::Token;
 use super::token_type::TokenType;
+use std::collections::HashMap;
+
+type KeywordsType = HashMap<String, TokenType>;
 
 #[derive(Debug)]
 pub struct Scanner {
@@ -10,6 +13,7 @@ pub struct Scanner {
   start: usize,
   current: usize,
   line: usize,
+  keywords: KeywordsType,
 }
 
 impl Scanner {
@@ -20,7 +24,29 @@ impl Scanner {
       start: 0,
       current: 0,
       line: 1,
+      keywords: Scanner::initialize_keywords(),
     }
+  }
+
+  fn initialize_keywords() -> KeywordsType {
+    let mut keywords = HashMap::<String, TokenType>::new();
+    keywords.insert(String::from("and"), TokenType::AND);
+    keywords.insert(String::from("class"), TokenType::CLASS);
+    keywords.insert(String::from("else"), TokenType::ELSE);
+    keywords.insert(String::from("false"), TokenType::FALSE);
+    keywords.insert(String::from("for"), TokenType::FOR);
+    keywords.insert(String::from("fun"), TokenType::FUN);
+    keywords.insert(String::from("if"), TokenType::IF);
+    keywords.insert(String::from("nil"), TokenType::NIL);
+    keywords.insert(String::from("or"), TokenType::OR);
+    keywords.insert(String::from("print"), TokenType::PRINT);
+    keywords.insert(String::from("return"), TokenType::RETURN);
+    keywords.insert(String::from("super"), TokenType::SUPER);
+    keywords.insert(String::from("this"), TokenType::THIS);
+    keywords.insert(String::from("true"), TokenType::TRUE);
+    keywords.insert(String::from("var"), TokenType::VAR);
+    keywords.insert(String::from("while"), TokenType::WHILE);
+    keywords
   }
 
   fn is_at_end(&self) -> bool {
@@ -122,6 +148,27 @@ impl Scanner {
     }
   }
 
+  fn is_alphanumeric(&self, c: char) -> bool {
+    match c {
+      '0'..='9' | 'a'..='z' | 'A'..='Z' | '_' => true,
+      _ => false,
+    }
+  }
+
+  fn process_identifier(&mut self) {
+    while self.is_alphanumeric(self.peek()) {
+      self.advance();
+    }
+
+    let text_slice = &self.source[self.start..self.current];
+    let text: String = text_slice.into_iter().collect();
+    let token_type = match self.keywords.get(&text) {
+      Some(t) => t.clone(),
+      None => TokenType::IDENTIFIER,
+    };
+    self.add_token(token_type);
+  }
+
   fn scan_token(&mut self) {
     let c = self.advance();
     match c {
@@ -178,6 +225,7 @@ impl Scanner {
       '\n' => self.line += 1,
       '"' => self.process_string_literal(),
       '0'..='9' => self.process_number_literal(),
+      'a'..='z' | 'A'..='Z' | '_' => self.process_identifier(),
       _ => report(self.line, "Unexpected character."),
     }
   }
@@ -307,6 +355,44 @@ mod tests {
       TokenType::RIGHTPAREN,
       TokenType::RIGHTPAREN,
       TokenType::LEFTBRACE,
+      TokenType::RIGHTBRACE,
+      TokenType::BANG,
+      TokenType::STAR,
+      TokenType::PLUS,
+      TokenType::MINUS,
+      TokenType::SLASH,
+      TokenType::EQUAL,
+      TokenType::LESS,
+      TokenType::NUMBER,
+      TokenType::GREATER,
+      TokenType::LESSEQUAL,
+      TokenType::EQUALEQUAL,
+      TokenType::EOF,
+    ];
+
+    for (i, t) in tokens.iter().enumerate() {
+      assert_eq!(assert_tokens[i], t.token_type);
+    }
+  }
+
+  #[test]
+  fn scan_identifiers_and_keywords_tokens() {
+    let text = String::from(
+      "// this is a comment\n((25.77)){orchid or} // grouping stuff\n!*+-/=<20> <= == // operators",
+    );
+    let source = text.chars().collect();
+    let mut scanner = Scanner::new(source);
+    let tokens = scanner.scan_tokens();
+
+    let assert_tokens = vec![
+      TokenType::LEFTPAREN,
+      TokenType::LEFTPAREN,
+      TokenType::NUMBER,
+      TokenType::RIGHTPAREN,
+      TokenType::RIGHTPAREN,
+      TokenType::LEFTBRACE,
+      TokenType::IDENTIFIER,
+      TokenType::OR,
       TokenType::RIGHTBRACE,
       TokenType::BANG,
       TokenType::STAR,
