@@ -1,5 +1,7 @@
 mod scanners;
 
+use scanners::Scanner;
+
 use failure::Error;
 use std::io::{stdin, stdout, Write};
 
@@ -19,7 +21,8 @@ pub fn run_repl() -> Result<(), Error> {
 }
 
 fn run(data: Vec<char>) -> Result<(), Error> {
-    // println!("Source code to scan:");
-    println!("{:?}", data);
+    let mut scanner = Scanner::new(data);
+    let tokens = scanner.scan_tokens();
+    println!("{:?}", tokens);
     Ok(())
 }
