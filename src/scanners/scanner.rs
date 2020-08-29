@@ -215,6 +215,16 @@ impl Scanner {
           while self.peek() != '\n' && !self.is_at_end() {
             self.advance();
           }
+        } else if self.is_next_match('*') {
+          while !self.is_at_end() {
+            let c = self.advance();
+            if c == '*' && self.is_next_match('/') {
+              break;
+            }
+          }
+          if self.is_at_end() {
+            report(self.line, "Unterminated comment.");
+          }
         } else {
           self.add_token(TokenType::SLASH);
         }
