@@ -1,3 +1,4 @@
+mod rlox;
 mod scanners;
 
 use scanners::Scanner;

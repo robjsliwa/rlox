@@ -1,7 +1,7 @@
-use super::error_handler::report;
-use super::literal::Literal;
-use super::token::Token;
-use super::token_type::TokenType;
+use crate::rlox::report;
+use crate::rlox::Literal;
+use crate::rlox::Token;
+use crate::rlox::TokenType;
 use std::collections::HashMap;
 
 type KeywordsType = HashMap<String, TokenType>;
