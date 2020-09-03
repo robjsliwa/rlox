@@ -82,5 +82,6 @@ mod tests {
     let mut ast_printer = AstPrinter {};
     let scanned_expression = ast_printer.print(expression);
     println!("Scanned expression {:?}", scanned_expression);
+    assert_eq!(scanned_expression, "(* (- 123) (group 45.67))");
   }
 }
