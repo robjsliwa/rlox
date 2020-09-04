@@ -2,36 +2,43 @@ use super::expr::*;
 use super::literal::*;
 use super::token::*;
 use super::token_type::*;
-use std::cell::RefCell;
+use failure::{format_err, Error};
+use std::cell::{Cell, RefCell};
 use std::rc::Rc;
+
+pub type ParserExpr = Rc<RefCell<dyn Expr>>;
+pub type ParserResult = Result<ParserExpr, Error>;
 
 pub struct Parser {
   tokens: Vec<Token>,
-  current: usize,
+  current: Cell<usize>,
 }
 
 impl Parser {
   fn new(tokens: Vec<Token>) -> Parser {
-    Parser { tokens, current: 0 }
+    Parser {
+      tokens,
+      current: Cell::new(0),
+    }
   }
 
-  fn expression<E: Expr>(&self) -> E {
+  fn expression(&self) -> ParserResult {
     self.equality()
   }
 
-  fn equality<E: Expr>(&mut self) -> Rc<RefCell<E>> {
-    let expr = Rc::new(RefCell::new(self.comparison()));
+  fn equality(&self) -> ParserResult {
+    let mut expr = self.comparison()?;
 
     while self.token_match(vec![TokenType::BANGEQUAL, TokenType::EQUALEQUAL]) {
       let operator = self.previous();
-      let right = self.comparison();
-      expr = Rc::new(RefCell::new(Binary::new(expr, operator, right)));
+      let right = self.comparison()?;
+      expr = Rc::new(RefCell::new(Binary::new(expr, operator.clone(), right)));
     }
 
-    expr
+    Ok(expr)
   }
 
-  fn token_match(&mut self, token_types: Vec<TokenType>) -> bool {
+  fn token_match(&self, token_types: Vec<TokenType>) -> bool {
     for token_type in token_types {
       if self.check(token_type) {
         self.advance();
@@ -49,9 +56,9 @@ impl Parser {
     self.peek().token_type == token_type
   }
 
-  fn advance(&mut self) -> Token {
+  fn advance(&self) -> Token {
     if !self.is_at_end() {
-      self.current += 1;
+      self.current.set(self.current.get() + 1);
     }
     self.previous()
   }
@@ -61,15 +68,15 @@ impl Parser {
   }
 
   fn peek(&self) -> Token {
-    self.tokens[self.current]
+    self.tokens[self.current.get()].clone()
   }
 
   fn previous(&self) -> Token {
-    self.tokens[self.current - 1]
+    self.tokens[self.current.get() - 1].clone()
   }
 
-  fn comparison<E: Expr>(&mut self) -> E {
-    let expr = self.addition();
+  fn comparison(&self) -> ParserResult {
+    let mut expr = self.addition()?;
 
     while self.token_match(vec![
       TokenType::GREATER,
@@ -78,56 +85,86 @@ impl Parser {
       TokenType::LESSEQUAL,
     ]) {
       let operator = self.previous();
-      let right = self.addition();
-      expr = Binary::new(expr, operator, right);
+      let right = self.addition()?;
+      expr = Rc::new(RefCell::new(Binary::new(expr, operator.clone(), right)));
     }
 
-    expr
+    Ok(expr)
   }
 
-  fn addition<E: Expr>(&mut self) -> E {
-    let expr = self.multiplication();
+  fn addition(&self) -> ParserResult {
+    let mut expr = self.multiplication()?;
 
-    while self.token_match(
-      TokenType::MINUS,
-      TokenType::PLUS,
-    ) {
+    while self.token_match(vec![TokenType::MINUS, TokenType::PLUS]) {
       let operator = self.previous();
-      let right = self.multiplication();
-      expr = Binary::new(expr, operator, right);
+      let right = self.multiplication()?;
+      expr = Rc::new(RefCell::new(Binary::new(expr, operator.clone(), right)));
     }
 
-    expr
+    Ok(expr)
   }
 
-  fn multiplication<E: Expr>(&mut self) -> E {
-    let expr = self.unary();
+  fn multiplication(&self) -> ParserResult {
+    let mut expr = self.unary()?;
 
-    while self.token_match(
-      TokenType::SLASH,
-      TokenType::STAR,
-    ) {
+    while self.token_match(vec![TokenType::SLASH, TokenType::STAR]) {
       let operator = self.previous();
-      let right = self.unary();
-      expr = Binary::new(expr, operator, right);
+      let right = self.unary()?;
+      expr = Rc::new(RefCell::new(Binary::new(expr, operator.clone(), right)));
     }
 
-    expr
+    Ok(expr)
   }
 
-  fn unary<E: Expr>(&mut self) -> E {
-    if self.token_match(TokenType::BANG, TokenType::MINUS) {
+  fn unary(&self) -> ParserResult {
+    if self.token_match(vec![TokenType::BANG, TokenType::MINUS]) {
       let operator = self.previous();
-      let right = self.unary();
-      return Unary::new(operator, right);
+      let right = self.unary()?;
+      return Ok(Rc::new(RefCell::new(Unary::new(operator.clone(), right))));
     }
 
     self.primary()
   }
 
-  fn primary<E: Expr> primary(&mut self) -> E {
-    if self.token_match(TokenType::FALSE) {
-      return LiteralObj::new()
+  fn primary(&self) -> ParserResult {
+    if self.token_match(vec![TokenType::FALSE]) {
+      return Ok(Rc::new(RefCell::new(LiteralObj::new(Some(
+        Literal::BooleanType(false),
+      )))));
     }
+
+    if self.token_match(vec![TokenType::TRUE]) {
+      return Ok(Rc::new(RefCell::new(LiteralObj::new(Some(
+        Literal::BooleanType(true),
+      )))));
+    }
+
+    if self.token_match(vec![TokenType::NIL]) {
+      return Ok(Rc::new(RefCell::new(LiteralObj::new(Some(
+        Literal::NullType,
+      )))));
+    }
+
+    if self.token_match(vec![TokenType::NUMBER, TokenType::STRING]) {
+      return Ok(Rc::new(RefCell::new(LiteralObj::new(
+        self.previous().literal,
+      ))));
+    }
+
+    if self.token_match(vec![TokenType::LEFTPAREN]) {
+      let expr = self.expression()?;
+      self.consume(TokenType::RIGHTPAREN, "Expected ')' after expression.")?;
+      return Ok(Rc::new(RefCell::new(Grouping::new(expr))));
+    }
+
+    Err(format_err!("Parser error."))
+  }
+
+  fn consume(&self, token_type: TokenType, message: &str) -> Result<Token, Error> {
+    if self.check(token_type) {
+      return Ok(self.advance());
+    }
+
+    Err(format_err!("{}", message))
   }
 }

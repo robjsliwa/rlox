@@ -1,5 +1,7 @@
 use super::literal::*;
 use super::token::*;
+use std::cell::RefCell;
+use std::rc::Rc;
 
 #[macro_export]
 macro_rules! generate_ast {
@@ -22,16 +24,14 @@ macro_rules! generate_ast {
 }
 
 pub trait Expr {
-  fn accept<V: Visitor>(&self, visitor: &mut V) -> V::Result;
+  fn accept(&self, visitor: Rc<RefCell<dyn Visitor>>) -> String;
 }
 
 pub trait Visitor {
-  type Result;
-
-  fn visit_binary_expr<E: Expr, R: Expr>(&mut self, expr: &Binary<E, R>) -> Self::Result;
-  fn visit_grouping_expr<E: Expr>(&mut self, expr: &Grouping<E>) -> Self::Result;
-  fn visit_literal_expr(&mut self, expr: &LiteralObj) -> Self::Result;
-  fn visit_unary_expr<E: Expr>(&mut self, expr: &Unary<E>) -> Self::Result;
+  fn visit_binary_expr(&mut self, expr: &Binary) -> String;
+  fn visit_grouping_expr(&mut self, expr: &Grouping) -> String;
+  fn visit_literal_expr(&mut self, expr: &LiteralObj) -> String;
+  fn visit_unary_expr(&mut self, expr: &Unary) -> String;
 }
 
 // generate_ast!(
@@ -43,14 +43,14 @@ pub trait Visitor {
 //   }
 // );
 
-pub struct Binary<E: Expr, R: Expr> {
-  pub left: E,
+pub struct Binary {
+  pub left: Rc<RefCell<dyn Expr>>,
   pub operator: Token,
-  pub right: R,
+  pub right: Rc<RefCell<dyn Expr>>,
 }
 
-impl<E: Expr, R: Expr> Binary<E, R> {
-  pub fn new(left: E, operator: Token, right: R) -> Binary<E, R> {
+impl Binary {
+  pub fn new(left: Rc<RefCell<dyn Expr>>, operator: Token, right: Rc<RefCell<dyn Expr>>) -> Binary {
     Binary {
       left,
       operator,
@@ -59,25 +59,25 @@ impl<E: Expr, R: Expr> Binary<E, R> {
   }
 }
 
-impl<E: Expr, R: Expr> Expr for Binary<E, R> {
-  fn accept<V: Visitor>(&self, visitor: &mut V) -> V::Result {
-    visitor.visit_binary_expr(self)
+impl Expr for Binary {
+  fn accept(&self, visitor: Rc<RefCell<dyn Visitor>>) -> String {
+    visitor.borrow_mut().visit_binary_expr(self)
   }
 }
 
-pub struct Grouping<E: Expr> {
-  pub expression: E,
+pub struct Grouping {
+  pub expression: Rc<RefCell<dyn Expr>>,
 }
 
-impl<E: Expr> Grouping<E> {
-  pub fn new(expression: E) -> Grouping<E> {
+impl Grouping {
+  pub fn new(expression: Rc<RefCell<dyn Expr>>) -> Grouping {
     Grouping { expression }
   }
 }
 
-impl<E: Expr> Expr for Grouping<E> {
-  fn accept<V: Visitor>(&self, visitor: &mut V) -> V::Result {
-    visitor.visit_grouping_expr(self)
+impl Expr for Grouping {
+  fn accept(&self, visitor: Rc<RefCell<dyn Visitor>>) -> String {
+    visitor.borrow_mut().visit_grouping_expr(self)
   }
 }
 
@@ -92,25 +92,25 @@ impl LiteralObj {
 }
 
 impl Expr for LiteralObj {
-  fn accept<V: Visitor>(&self, visitor: &mut V) -> V::Result {
-    visitor.visit_literal_expr(self)
+  fn accept(&self, visitor: Rc<RefCell<dyn Visitor>>) -> String {
+    visitor.borrow_mut().visit_literal_expr(self)
   }
 }
 
-pub struct Unary<E: Expr> {
+pub struct Unary {
   pub operator: Token,
-  pub right: E,
+  pub right: Rc<RefCell<dyn Expr>>,
 }
 
-impl<E: Expr> Unary<E> {
-  pub fn new(operator: Token, right: E) -> Unary<E> {
+impl Unary {
+  pub fn new(operator: Token, right: Rc<RefCell<dyn Expr>>) -> Unary {
     Unary { operator, right }
   }
 }
 
-impl<E: Expr> Expr for Unary<E> {
-  fn accept<V: Visitor>(&self, visitor: &mut V) -> V::Result {
-    visitor.visit_unary_expr(self)
+impl Expr for Unary {
+  fn accept(&self, visitor: Rc<RefCell<dyn Visitor>>) -> String {
+    visitor.borrow_mut().visit_unary_expr(self)
   }
 }
 
