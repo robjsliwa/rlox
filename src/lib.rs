@@ -1,6 +1,7 @@
 mod rlox;
 mod scanners;
 
+use rlox::*;
 use scanners::Scanner;
 
 use failure::Error;
@@ -24,6 +25,17 @@ pub fn run_repl() -> Result<(), Error> {
 fn run(data: Vec<char>) -> Result<(), Error> {
     let mut scanner = Scanner::new(data);
     let tokens = scanner.scan_tokens();
-    println!("{:?}", tokens);
+    // println!("{:?}", tokens);
+    let parser = Parser::new(tokens);
+    let expression = parser.parse();
+
+    match expression {
+        Ok(expr) => {
+            let ast_printer = AstPrinter {};
+            println!("{:?}", ast_printer.print(expr));
+        }
+        Err(e) => println!("Error: {}", e),
+    }
+
     Ok(())
 }

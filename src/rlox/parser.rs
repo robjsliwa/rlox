@@ -15,7 +15,7 @@ pub struct Parser {
 }
 
 impl Parser {
-  fn new(tokens: Vec<Token>) -> Parser {
+  pub fn new(tokens: Vec<Token>) -> Parser {
     Parser {
       tokens,
       current: Cell::new(0),
@@ -157,7 +157,7 @@ impl Parser {
       return Ok(Rc::new(RefCell::new(Grouping::new(expr))));
     }
 
-    Err(format_err!("Parser error."))
+    Err(format_err!("Expect expression."))
   }
 
   fn consume(&self, token_type: TokenType, message: &str) -> Result<Token, Error> {
@@ -166,5 +166,31 @@ impl Parser {
     }
 
     Err(format_err!("{}", message))
+  }
+
+  fn synchronize(&self) {
+    self.advance();
+
+    while !self.is_at_end() {
+      if self.previous().token_type == TokenType::SEMICOLON {
+        return;
+      }
+
+      match self.peek().token_type {
+        TokenType::CLASS
+        | TokenType::FUN
+        | TokenType::VAR
+        | TokenType::FOR
+        | TokenType::IF
+        | TokenType::WHILE
+        | TokenType::PRINT
+        | TokenType::RETURN => return,
+        _ => self.advance(),
+      };
+    }
+  }
+
+  pub fn parse(&self) -> ParserResult {
+    self.expression()
   }
 }
