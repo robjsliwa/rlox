@@ -28,10 +28,10 @@ pub trait Expr {
 }
 
 pub trait Visitor {
-  fn visit_binary_expr(&mut self, expr: &Binary) -> String;
-  fn visit_grouping_expr(&mut self, expr: &Grouping) -> String;
-  fn visit_literal_expr(&mut self, expr: &LiteralObj) -> String;
-  fn visit_unary_expr(&mut self, expr: &Unary) -> String;
+  fn visit_binary_expr(&self, expr: &Binary) -> String;
+  fn visit_grouping_expr(&self, expr: &Grouping) -> String;
+  fn visit_literal_expr(&self, expr: &LiteralObj) -> String;
+  fn visit_unary_expr(&self, expr: &Unary) -> String;
 }
 
 // generate_ast!(
@@ -61,7 +61,7 @@ impl Binary {
 
 impl Expr for Binary {
   fn accept(&self, visitor: Rc<RefCell<dyn Visitor>>) -> String {
-    visitor.borrow_mut().visit_binary_expr(self)
+    visitor.borrow().visit_binary_expr(self)
   }
 }
 
@@ -77,7 +77,7 @@ impl Grouping {
 
 impl Expr for Grouping {
   fn accept(&self, visitor: Rc<RefCell<dyn Visitor>>) -> String {
-    visitor.borrow_mut().visit_grouping_expr(self)
+    visitor.borrow().visit_grouping_expr(self)
   }
 }
 
@@ -93,7 +93,7 @@ impl LiteralObj {
 
 impl Expr for LiteralObj {
   fn accept(&self, visitor: Rc<RefCell<dyn Visitor>>) -> String {
-    visitor.borrow_mut().visit_literal_expr(self)
+    visitor.borrow().visit_literal_expr(self)
   }
 }
 
@@ -110,7 +110,7 @@ impl Unary {
 
 impl Expr for Unary {
   fn accept(&self, visitor: Rc<RefCell<dyn Visitor>>) -> String {
-    visitor.borrow_mut().visit_unary_expr(self)
+    visitor.borrow().visit_unary_expr(self)
   }
 }
 

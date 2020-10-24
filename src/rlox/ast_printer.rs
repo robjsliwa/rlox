@@ -7,7 +7,7 @@ pub struct AstPrinter {}
 
 impl AstPrinter {
   pub fn print(self, expr: Rc<RefCell<dyn Expr>>) -> String {
-    expr.borrow_mut().accept(Rc::new(RefCell::new(self)))
+    expr.borrow().accept(Rc::new(RefCell::new(self)))
   }
 
   fn parenthesize_expr(&self, name: &str, expr: Rc<RefCell<dyn Expr>>) -> String {
@@ -15,11 +15,7 @@ impl AstPrinter {
     text.push_str(name);
 
     text.push_str(" ");
-    text.push_str(
-      &expr
-        .borrow_mut()
-        .accept(Rc::new(RefCell::new(self.clone()))),
-    );
+    text.push_str(&expr.borrow().accept(Rc::new(RefCell::new(self.clone()))));
 
     text.push_str(")");
 
@@ -38,14 +34,14 @@ impl AstPrinter {
     text.push_str(" ");
     text.push_str(
       &expr_left
-        .borrow_mut()
+        .borrow()
         .accept(Rc::new(RefCell::new(self.clone()))),
     );
 
     text.push_str(" ");
     text.push_str(
       &expr_right
-        .borrow_mut()
+        .borrow()
         .accept(Rc::new(RefCell::new(self.clone()))),
     );
 
@@ -56,22 +52,22 @@ impl AstPrinter {
 }
 
 impl Visitor for AstPrinter {
-  fn visit_binary_expr(&mut self, expr: &Binary) -> String {
+  fn visit_binary_expr(&self, expr: &Binary) -> String {
     self.parenthesize_expr_pair(&expr.operator.lexeme, expr.left.clone(), expr.right.clone())
   }
 
-  fn visit_grouping_expr(&mut self, expr: &Grouping) -> String {
+  fn visit_grouping_expr(&self, expr: &Grouping) -> String {
     self.parenthesize_expr("group", expr.expression.clone())
   }
 
-  fn visit_literal_expr(&mut self, expr: &LiteralObj) -> String {
+  fn visit_literal_expr(&self, expr: &LiteralObj) -> String {
     match &expr.value {
       Some(v) => v.to_string(),
       None => String::from("nil"),
     }
   }
 
-  fn visit_unary_expr(&mut self, expr: &Unary) -> String {
+  fn visit_unary_expr(&self, expr: &Unary) -> String {
     self.parenthesize_expr(&expr.operator.lexeme, expr.right.clone())
   }
 }
