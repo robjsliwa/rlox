@@ -1,5 +1,6 @@
 use super::literal::*;
 use super::token::*;
+use failure::Error;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -24,14 +25,14 @@ macro_rules! generate_ast {
 }
 
 pub trait Expr<T> {
-  fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> T;
+  fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error>;
 }
 
 pub trait Visitor<T> {
-  fn visit_binary_expr(&self, expr: &Binary<T>) -> T;
-  fn visit_grouping_expr(&self, expr: &Grouping<T>) -> T;
-  fn visit_literal_expr(&self, expr: &LiteralObj) -> T;
-  fn visit_unary_expr(&self, expr: &Unary<T>) -> T;
+  fn visit_binary_expr(&self, expr: &Binary<T>) -> Result<T, Error>;
+  fn visit_grouping_expr(&self, expr: &Grouping<T>) -> Result<T, Error>;
+  fn visit_literal_expr(&self, expr: &LiteralObj) -> Result<T, Error>;
+  fn visit_unary_expr(&self, expr: &Unary<T>) -> Result<T, Error>;
 }
 
 // generate_ast!(
@@ -64,7 +65,7 @@ impl<T> Binary<T> {
 }
 
 impl<T> Expr<T> for Binary<T> {
-  fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> T {
+  fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error> {
     visitor.borrow().visit_binary_expr(self)
   }
 }
@@ -80,7 +81,7 @@ impl<T> Grouping<T> {
 }
 
 impl<T> Expr<T> for Grouping<T> {
-  fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> T {
+  fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error> {
     visitor.borrow().visit_grouping_expr(self)
   }
 }
@@ -96,7 +97,7 @@ impl LiteralObj {
 }
 
 impl<T> Expr<T> for LiteralObj {
-  fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> T {
+  fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error> {
     visitor.borrow().visit_literal_expr(self)
   }
 }
@@ -113,7 +114,7 @@ impl<T> Unary<T> {
 }
 
 impl<T> Expr<T> for Unary<T> {
-  fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> T {
+  fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error> {
     visitor.borrow().visit_unary_expr(self)
   }
 }
