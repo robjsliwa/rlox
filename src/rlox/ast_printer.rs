@@ -6,11 +6,11 @@ use std::rc::Rc;
 pub struct AstPrinter {}
 
 impl AstPrinter {
-  pub fn print(self, expr: Rc<RefCell<dyn Expr>>) -> String {
+  pub fn print(self, expr: Rc<RefCell<dyn Expr<String>>>) -> String {
     expr.borrow().accept(Rc::new(RefCell::new(self)))
   }
 
-  fn parenthesize_expr(&self, name: &str, expr: Rc<RefCell<dyn Expr>>) -> String {
+  fn parenthesize_expr(&self, name: &str, expr: Rc<RefCell<dyn Expr<String>>>) -> String {
     let mut text = String::from("(");
     text.push_str(name);
 
@@ -25,8 +25,8 @@ impl AstPrinter {
   fn parenthesize_expr_pair(
     &self,
     name: &str,
-    expr_left: Rc<RefCell<dyn Expr>>,
-    expr_right: Rc<RefCell<dyn Expr>>,
+    expr_left: Rc<RefCell<dyn Expr<String>>>,
+    expr_right: Rc<RefCell<dyn Expr<String>>>,
   ) -> String {
     let mut text = String::from("(");
     text.push_str(name);
@@ -51,12 +51,12 @@ impl AstPrinter {
   }
 }
 
-impl Visitor for AstPrinter {
-  fn visit_binary_expr(&self, expr: &Binary) -> String {
+impl Visitor<String> for AstPrinter {
+  fn visit_binary_expr(&self, expr: &Binary<String>) -> String {
     self.parenthesize_expr_pair(&expr.operator.lexeme, expr.left.clone(), expr.right.clone())
   }
 
-  fn visit_grouping_expr(&self, expr: &Grouping) -> String {
+  fn visit_grouping_expr(&self, expr: &Grouping<String>) -> String {
     self.parenthesize_expr("group", expr.expression.clone())
   }
 
@@ -67,7 +67,7 @@ impl Visitor for AstPrinter {
     }
   }
 
-  fn visit_unary_expr(&self, expr: &Unary) -> String {
+  fn visit_unary_expr(&self, expr: &Unary<String>) -> String {
     self.parenthesize_expr(&expr.operator.lexeme, expr.right.clone())
   }
 }

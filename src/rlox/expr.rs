@@ -23,15 +23,15 @@ macro_rules! generate_ast {
   };
 }
 
-pub trait Expr {
-  fn accept(&self, visitor: Rc<RefCell<dyn Visitor>>) -> String;
+pub trait Expr<T> {
+  fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> T;
 }
 
-pub trait Visitor {
-  fn visit_binary_expr(&self, expr: &Binary) -> String;
-  fn visit_grouping_expr(&self, expr: &Grouping) -> String;
-  fn visit_literal_expr(&self, expr: &LiteralObj) -> String;
-  fn visit_unary_expr(&self, expr: &Unary) -> String;
+pub trait Visitor<T> {
+  fn visit_binary_expr(&self, expr: &Binary<T>) -> T;
+  fn visit_grouping_expr(&self, expr: &Grouping<T>) -> T;
+  fn visit_literal_expr(&self, expr: &LiteralObj) -> T;
+  fn visit_unary_expr(&self, expr: &Unary<T>) -> T;
 }
 
 // generate_ast!(
@@ -43,14 +43,18 @@ pub trait Visitor {
 //   }
 // );
 
-pub struct Binary {
-  pub left: Rc<RefCell<dyn Expr>>,
+pub struct Binary<T> {
+  pub left: Rc<RefCell<dyn Expr<T>>>,
   pub operator: Token,
-  pub right: Rc<RefCell<dyn Expr>>,
+  pub right: Rc<RefCell<dyn Expr<T>>>,
 }
 
-impl Binary {
-  pub fn new(left: Rc<RefCell<dyn Expr>>, operator: Token, right: Rc<RefCell<dyn Expr>>) -> Binary {
+impl<T> Binary<T> {
+  pub fn new(
+    left: Rc<RefCell<dyn Expr<T>>>,
+    operator: Token,
+    right: Rc<RefCell<dyn Expr<T>>>,
+  ) -> Binary<T> {
     Binary {
       left,
       operator,
@@ -59,24 +63,24 @@ impl Binary {
   }
 }
 
-impl Expr for Binary {
-  fn accept(&self, visitor: Rc<RefCell<dyn Visitor>>) -> String {
+impl<T> Expr<T> for Binary<T> {
+  fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> T {
     visitor.borrow().visit_binary_expr(self)
   }
 }
 
-pub struct Grouping {
-  pub expression: Rc<RefCell<dyn Expr>>,
+pub struct Grouping<T> {
+  pub expression: Rc<RefCell<dyn Expr<T>>>,
 }
 
-impl Grouping {
-  pub fn new(expression: Rc<RefCell<dyn Expr>>) -> Grouping {
+impl<T> Grouping<T> {
+  pub fn new(expression: Rc<RefCell<dyn Expr<T>>>) -> Grouping<T> {
     Grouping { expression }
   }
 }
 
-impl Expr for Grouping {
-  fn accept(&self, visitor: Rc<RefCell<dyn Visitor>>) -> String {
+impl<T> Expr<T> for Grouping<T> {
+  fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> T {
     visitor.borrow().visit_grouping_expr(self)
   }
 }
@@ -91,25 +95,25 @@ impl LiteralObj {
   }
 }
 
-impl Expr for LiteralObj {
-  fn accept(&self, visitor: Rc<RefCell<dyn Visitor>>) -> String {
+impl<T> Expr<T> for LiteralObj {
+  fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> T {
     visitor.borrow().visit_literal_expr(self)
   }
 }
 
-pub struct Unary {
+pub struct Unary<T> {
   pub operator: Token,
-  pub right: Rc<RefCell<dyn Expr>>,
+  pub right: Rc<RefCell<dyn Expr<T>>>,
 }
 
-impl Unary {
-  pub fn new(operator: Token, right: Rc<RefCell<dyn Expr>>) -> Unary {
+impl<T> Unary<T> {
+  pub fn new(operator: Token, right: Rc<RefCell<dyn Expr<T>>>) -> Unary<T> {
     Unary { operator, right }
   }
 }
 
-impl Expr for Unary {
-  fn accept(&self, visitor: Rc<RefCell<dyn Visitor>>) -> String {
+impl<T> Expr<T> for Unary<T> {
+  fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> T {
     visitor.borrow().visit_unary_expr(self)
   }
 }

@@ -6,8 +6,8 @@ use failure::{format_err, Error};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
-pub type ParserExpr = Rc<RefCell<dyn Expr>>;
-pub type ParserResult = Result<ParserExpr, Error>;
+pub type ParserExpr<T> = Rc<RefCell<dyn Expr<T>>>;
+pub type ParserResult<T> = Result<ParserExpr<T>, Error>;
 
 pub struct Parser {
   tokens: Vec<Token>,
@@ -22,11 +22,11 @@ impl Parser {
     }
   }
 
-  fn expression(&self) -> ParserResult {
+  fn expression<T: 'static>(&self) -> ParserResult<T> {
     self.equality()
   }
 
-  fn equality(&self) -> ParserResult {
+  fn equality<T: 'static>(&self) -> ParserResult<T> {
     let mut expr = self.comparison()?;
 
     while self.token_match(vec![TokenType::BANGEQUAL, TokenType::EQUALEQUAL]) {
@@ -75,7 +75,7 @@ impl Parser {
     self.tokens[self.current.get() - 1].clone()
   }
 
-  fn comparison(&self) -> ParserResult {
+  fn comparison<T: 'static>(&self) -> ParserResult<T> {
     let mut expr = self.addition()?;
 
     while self.token_match(vec![
@@ -92,7 +92,7 @@ impl Parser {
     Ok(expr)
   }
 
-  fn addition(&self) -> ParserResult {
+  fn addition<T: 'static>(&self) -> ParserResult<T> {
     let mut expr = self.multiplication()?;
 
     while self.token_match(vec![TokenType::MINUS, TokenType::PLUS]) {
@@ -104,7 +104,7 @@ impl Parser {
     Ok(expr)
   }
 
-  fn multiplication(&self) -> ParserResult {
+  fn multiplication<T: 'static>(&self) -> ParserResult<T> {
     let mut expr = self.unary()?;
 
     while self.token_match(vec![TokenType::SLASH, TokenType::STAR]) {
@@ -116,7 +116,7 @@ impl Parser {
     Ok(expr)
   }
 
-  fn unary(&self) -> ParserResult {
+  fn unary<T: 'static>(&self) -> ParserResult<T> {
     if self.token_match(vec![TokenType::BANG, TokenType::MINUS]) {
       let operator = self.previous();
       let right = self.unary()?;
@@ -126,7 +126,7 @@ impl Parser {
     self.primary()
   }
 
-  fn primary(&self) -> ParserResult {
+  fn primary<T: 'static>(&self) -> ParserResult<T> {
     if self.token_match(vec![TokenType::FALSE]) {
       return Ok(Rc::new(RefCell::new(LiteralObj::new(Some(
         Literal::BooleanType(false),
@@ -190,7 +190,7 @@ impl Parser {
     }
   }
 
-  pub fn parse(&self) -> ParserResult {
+  pub fn parse<T: 'static>(&self) -> ParserResult<T> {
     self.expression()
   }
 }
