@@ -10,6 +10,14 @@ impl Interpreter {
   fn evaluate(&self, expr: Rc<RefCell<dyn Expr<RloxType>>>) -> Result<RloxType, Error> {
     expr.borrow().accept(Rc::new(RefCell::new(self.clone())))
   }
+
+  fn is_truthy(&self, rlox_type: RloxType) -> Result<RloxType, Error> {
+    match rlox_type {
+      RloxType::NullType => Ok(RloxType::BooleanType(false)),
+      RloxType::BooleanType(b) => Ok(RloxType::BooleanType(!b)),
+      _ => Ok(RloxType::BooleanType(true)),
+    }
+  }
 }
 
 impl Visitor<RloxType> for Interpreter {
@@ -29,10 +37,16 @@ impl Visitor<RloxType> for Interpreter {
   }
 
   fn visit_unary_expr(&self, expr: &Unary<RloxType>) -> Result<RloxType, Error> {
-    let right = self.evaluate(expr.right.clone());
+    let right = self.evaluate(expr.right.clone())?;
 
     match expr.operator.token_type {
-      TokenType::MINUS => Ok(RloxType::NumberType(0.0)),
+      TokenType::MINUS => {
+        if let RloxType::NumberType(n) = right {
+          return Ok(RloxType::NumberType(-1.0 * n));
+        }
+        return Err(format_err!("Invalid type"));
+      }
+      TokenType::BANG => self.is_truthy(right),
       _ => Err(format_err!("unsupported operation")),
     }
   }
