@@ -1,50 +1,54 @@
-#[derive(Clone, Debug, PartialEq)]
-pub enum TokenType {
-  // Single-character tokens.
-  LEFTPAREN,
-  RIGHTPAREN,
-  LEFTBRACE,
-  RIGHTBRACE,
-  COMMA,
-  DOT,
-  MINUS,
-  PLUS,
-  SEMICOLON,
-  SLASH,
-  STAR,
+use crate::enum_to_str;
 
-  // One or two character tokens.
-  BANG,
-  BANGEQUAL,
-  EQUAL,
-  EQUALEQUAL,
-  GREATER,
-  GREATEREQUAL,
-  LESS,
-  LESSEQUAL,
+enum_to_str! {
+  #[derive(Clone, Debug, PartialEq)]
+  pub enum TokenType {
+    // Single-character tokens.
+    LEFTPAREN,
+    RIGHTPAREN,
+    LEFTBRACE,
+    RIGHTBRACE,
+    COMMA,
+    DOT,
+    MINUS,
+    PLUS,
+    SEMICOLON,
+    SLASH,
+    STAR,
 
-  // Literals.
-  IDENTIFIER,
-  STRING,
-  NUMBER,
+    // One or two character tokens.
+    BANG,
+    BANGEQUAL,
+    EQUAL,
+    EQUALEQUAL,
+    GREATER,
+    GREATEREQUAL,
+    LESS,
+    LESSEQUAL,
 
-  // Keywords.
-  AND,
-  CLASS,
-  ELSE,
-  FALSE,
-  FUN,
-  FOR,
-  IF,
-  NIL,
-  OR,
-  PRINT,
-  RETURN,
-  SUPER,
-  THIS,
-  TRUE,
-  VAR,
-  WHILE,
+    // Literals.
+    IDENTIFIER,
+    STRING,
+    NUMBER,
 
-  EOF,
+    // Keywords.
+    AND,
+    CLASS,
+    ELSE,
+    FALSE,
+    FUN,
+    FOR,
+    IF,
+    NIL,
+    OR,
+    PRINT,
+    RETURN,
+    SUPER,
+    THIS,
+    TRUE,
+    VAR,
+    WHILE,
+
+    EOF,
+  }
 }
