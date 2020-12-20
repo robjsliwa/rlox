@@ -3,11 +3,18 @@ use failure::{format_err, Error};
 use std::cell::RefCell;
 use std::rc::Rc;
 
+type Expression = Rc<RefCell<dyn Expr<RloxType>>>;
+
 #[derive(Debug, Clone)]
 pub struct Interpreter {}
 
 impl Interpreter {
-  fn evaluate(&self, expr: Rc<RefCell<dyn Expr<RloxType>>>) -> Result<RloxType, Error> {
+  pub fn interpret(expression: Expression) -> Result<RloxType, Error> {
+    let interpreter = Interpreter {};
+    interpreter.evaluate(expression)
+  }
+
+  fn evaluate(&self, expr: Expression) -> Result<RloxType, Error> {
     expr.borrow().accept(Rc::new(RefCell::new(self.clone())))
   }
 
@@ -60,7 +67,7 @@ impl Interpreter {
     if let RloxType::StringType(left_number) = left {
       if let RloxType::StringType(right_number) = right {
         return match token_type {
-          TokenType::PLUS => Ok(RloxType::NumberType(format!("{}{}", left_number, right_number))),
+          TokenType::PLUS => Ok(RloxType::StringType(format!("{}{}", left_number, right_number))),
           _ => Err(format_err!("unsupported operand type(s) for {}: both operand types must be string", token_type.name())),
         }
       }
