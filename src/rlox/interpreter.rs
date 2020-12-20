@@ -19,6 +19,25 @@ impl Interpreter {
     }
   }
 
+  fn is_equal(&self, left: Literal, right: Literal) -> Result<RloxType, Error> {
+    if left == Literal::NullType && right == Literal::NullType {
+      return Ok(RloxType::BooleanType(true));
+    }
+    if left == Literal::NullType {
+      return Ok(RloxType::BooleanType(false));
+    }
+
+    Ok(RloxType::BooleanType(left == right))
+  }
+
+  fn not(&self, b: RloxType) -> Result<RloxType, Error> {
+    if let RloxType::BooleanType(b) = b {
+      return Ok(RloxType::BooleanType(!b));
+    }
+
+    Err(format_err!("invalid type: expected boolean"))
+  }
+
   fn compute_binary_operand(&self, token_type: &TokenType, left: Literal, right: Literal) -> Result<RloxType, Error> {
     if let RloxType::NumberType(left_number) = left {
       if let RloxType::NumberType(right_number) = right {
@@ -27,6 +46,12 @@ impl Interpreter {
           TokenType::PLUS => Ok(RloxType::NumberType(left_number + right_number)),
           TokenType::SLASH => Ok(RloxType::NumberType(left_number / right_number)),
           TokenType::STAR => Ok(RloxType::NumberType(left_number * right_number)),
+          TokenType::GREATER => Ok(RloxType::BooleanType(left_number > right_number)),
+          TokenType::GREATEREQUAL => Ok(RloxType::BooleanType(left_number >= right_number)),
+          TokenType::LESS => Ok(RloxType::BooleanType(left_number < right_number)),
+          TokenType::LESSEQUAL => Ok(RloxType::BooleanType(left_number <= right_number)),
+          TokenType::BANGEQUAL => self.not(self.is_equal(left, right)?),
+          TokenType::EQUALEQUAL => self.is_equal(left, right),
           _ => Err(format_err!("unimplemented operand {}", token_type.name())),
         }
       }
