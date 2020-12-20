@@ -111,3 +111,46 @@ impl Visitor<RloxType> for Interpreter {
     }
   }
 }
+
+#[cfg(test)]
+mod tests {
+  use super::*;
+  use crate::rlox::*;
+  use crate::scanners::Scanner;
+  use std::collections::HashMap;
+
+  fn run(input: &str) -> Result<RloxType, Error> {
+    let data = input.chars().collect();
+
+    let mut scanner = Scanner::new(data);
+    let tokens = scanner.scan_tokens();
+    let parser = Parser::new(tokens);
+    let expression = parser.parse()?;
+    let val = Interpreter::interpret(expression)?;
+    Ok(val)
+  }
+
+  #[test]
+  fn test_basic_arithmetic() -> Result<(), Error> {
+    let test_input: HashMap<&str, f64> = [
+      ("1 + 2", 3.0),
+      ("-1 + 2", 1.0),
+      ("-1 + -2", -3.0),
+      ("5+5", 10.0),
+      ("25 - 1", 24.0),
+      ("-3 - 3", -6.0),
+      ("-3 - -3", 0.0),
+      ("5*5", 25.0),
+      ("25 /5", 5.0),
+      ("1 - 4 * 4", -15.0),
+      ("25 / 5 + 2 * 4", 13.0),
+    ].iter().cloned().collect();
+
+    for (&input, &expected_result) in test_input.iter() {
+      let val = run(input)?;
+      assert_eq!(val, RloxType::NumberType(expected_result));
+    }
+
+    Ok(())
+  }
+}
