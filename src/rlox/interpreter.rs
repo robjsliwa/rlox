@@ -153,4 +153,28 @@ mod tests {
 
     Ok(())
   }
+
+  #[test]
+  fn test_truthiness() -> Result<(), Error> {
+    let test_input: HashMap<&str, bool> = [
+      ("1 < 2", true),
+      ("-1 <= 2", true),
+      ("25 >= 25", true),
+      ("5 > 5", false),
+      ("-25 > 1", false),
+      ("-3 != 3", true),
+      ("-3 == -3", true),
+      ("5==5", true),
+      ("25 >= 5", true),
+      ("1 - 4 > 4", false),
+      ("25 / 5 == 2 * 4 - 3", true),
+    ].iter().cloned().collect();
+
+    for (&input, &expected_result) in test_input.iter() {
+      let val = run(input)?;
+      assert_eq!(val, RloxType::BooleanType(expected_result));
+    }
+
+    Ok(())
+  }
 }
