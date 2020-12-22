@@ -24,7 +24,7 @@ generate_ast_tree! {
   Expr {
     visit_binary_expr Binary<T>,
     visit_grouping_expr Grouping<T>,
-    visit_literal_expr Literal,
+    visit_literal_expr LiteralObj,
     visit_unary_expr Unary<T>,
   }
 }
@@ -44,24 +44,47 @@ generate_ast_tree! {
 
 #[macro_export]
 macro_rules! parse_grammar_entry {
-  ($visitor_name:ident $name:ident {
+  ($visitor_name:ident $name:ident $g:ident {
     $($var_name:ident: $t:ty),+;
   }) => {
-    pub struct $name<T> {
+    pub struct $name<$g> {
       $(pub $var_name: $t),*,
     }
     
-    impl<T> $name<T> {
+    impl<$g> $name<$g> {
       pub fn new(
         $($var_name: $t),*,
-      ) -> $name<T> {
+      ) -> $name<$g> {
         $name {
           $($var_name),*,
         }
       }
     }
     
-    impl<T> Expr<T> for $name<T> {
+    impl<T> Expr<T> for $name<$g> {
+      fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error> {
+        visitor.borrow().$visitor_name(self)
+      }
+    }
+  };
+  ($visitor_name:ident $name:ident {
+    $($var_name:ident: $t:ty),+;
+  }) => {
+    pub struct $name {
+      $(pub $var_name: $t),*,
+    }
+    
+    impl $name {
+      pub fn new(
+        $($var_name: $t),*,
+      ) -> $name {
+        $name {
+          $($var_name),*,
+        }
+      }
+    }
+    
+    impl<T> Expr<T> for $name {
       fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error> {
         visitor.borrow().$visitor_name(self)
       }
@@ -72,9 +95,9 @@ macro_rules! parse_grammar_entry {
 #[macro_export]
 macro_rules! generate_ast {
   ($root_name: ident {
-    $($visitor_name:ident $name:ident => $($var_name:ident: $t:ty),+;)+
+    $($visitor_name:ident $name:ident $($g:ident)* => $($var_name:ident: $t:ty),+;)+
   }) => {
-    $(parse_grammar_entry!($visitor_name $name {
+    $(parse_grammar_entry!($visitor_name $name $($g)* {
       $($var_name: $t),+;
     });)+
   };
@@ -84,10 +107,10 @@ type Expression<T> = Rc<RefCell<dyn Expr<T>>>;
 
 generate_ast! {
   Expr {
-    visit_binary_expr Binary => left: Expression<T>, operator: Token, right: Expression<T>;
-    visit_grouping_expr Grouping => expression: Expression<T>;
-    // visit_literal_expr Literal => value: Option<Literal>;
-    visit_unary_expr Unary => operator: Token, right: Expression<T>;
+    visit_binary_expr Binary T => left: Expression<T>, operator: Token, right: Expression<T>;
+    visit_grouping_expr Grouping T => expression: Expression<T>;
+    visit_literal_expr LiteralObj => value: Option<Literal>;
+    visit_unary_expr Unary T => operator: Token, right: Expression<T>;
   }
 }
 
@@ -133,21 +156,21 @@ generate_ast! {
 //   }
 // }
 
-pub struct LiteralObj {
-  pub value: Option<Literal>,
-}
+// pub struct LiteralObj {
+//   pub value: Option<Literal>,
+// }
 
-impl LiteralObj {
-  pub fn new(value: Option<Literal>) -> LiteralObj {
-    LiteralObj { value }
-  }
-}
+// impl LiteralObj {
+//   pub fn new(value: Option<Literal>) -> LiteralObj {
+//     LiteralObj { value }
+//   }
+// }
 
-impl<T> Expr<T> for LiteralObj {
-  fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error> {
-    visitor.borrow().visit_literal_expr(self)
-  }
-}
+// impl<T> Expr<T> for LiteralObj {
+//   fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error> {
+//     visitor.borrow().visit_literal_expr(self)
+//   }
+// }
 
 // pub struct Unary<T> {
 //   pub operator: Token,
@@ -166,26 +189,26 @@ impl<T> Expr<T> for LiteralObj {
 //   }
 // }
 
-#[cfg(test)]
-mod tests {
-  // use super::*;
+// #[cfg(test)]
+// mod tests {
+//   // use super::*;
 
-  generate_ast!(
-    #[derive(Debug)]
-    struct Stmt {
-      a: String,
-      b: bool,
-      c: u64,
-    }
-  );
+//   generate_ast!(
+//     #[derive(Debug)]
+//     struct Stmt {
+//       a: String,
+//       b: bool,
+//       c: u64,
+//     }
+//   );
 
-  #[test]
-  fn create_via_new() {
-    let stmt = Stmt::new(String::from("Howdy"), true, 10);
-    println!("stmt {:?}", stmt);
+//   #[test]
+//   fn create_via_new() {
+//     let stmt = Stmt::new(String::from("Howdy"), true, 10);
+//     println!("stmt {:?}", stmt);
 
-    assert_eq!(stmt.a, String::from("Howdy"));
-    assert_eq!(stmt.b, true);
-    assert_eq!(stmt.c, 10);
-  }
-}
+//     assert_eq!(stmt.a, String::from("Howdy"));
+//     assert_eq!(stmt.b, true);
+//     assert_eq!(stmt.c, 10);
+//   }
+// }
