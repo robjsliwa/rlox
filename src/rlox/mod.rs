@@ -7,7 +7,7 @@ mod parser;
 mod rlox_type;
 mod token;
 mod token_type;
-mod utils;
+mod enum_to_str;
 
 pub use self::ast_printer::*;
 pub use self::error_handler::*;
