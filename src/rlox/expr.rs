@@ -4,7 +4,6 @@ use failure::Error;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-#[macro_export]
 macro_rules! parse_ast_visitor_entry {
   ($visitor_name:ident $t:ident $g:ident) => {
     fn $visitor_name(&self, expr: &$t<$g>) -> Result<T, Error>;
@@ -14,7 +13,6 @@ macro_rules! parse_ast_visitor_entry {
   };
 }
 
-#[macro_export]
 macro_rules! generate_ast_visitor {
   ($name: ident {
     $($visitor_name:ident $t:ident $($g:ident)?),*,
@@ -29,29 +27,6 @@ macro_rules! generate_ast_visitor {
   };
 }
 
-generate_ast_visitor! {
-  Expr {
-    visit_binary_expr Binary T,
-    visit_grouping_expr Grouping T,
-    visit_literal_expr LiteralObj,
-    visit_unary_expr Unary T,
-  }
-}
-
-// Above generate the following:
-
-// pub trait Expr<T> {
-//   fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error>;
-// }
-
-// pub trait Visitor<T> {
-//   fn visit_binary_expr(&self, expr: &Binary<T>) -> Result<T, Error>;
-//   fn visit_grouping_expr(&self, expr: &Grouping<T>) -> Result<T, Error>;
-//   fn visit_literal_expr(&self, expr: &LiteralObj) -> Result<T, Error>;
-//   fn visit_unary_expr(&self, expr: &Unary<T>) -> Result<T, Error>;
-// }
-
-#[macro_export]
 macro_rules! parse_grammar_entry {
   ($visitor_name:ident $name:ident $g:ident {
     $($var_name:ident: $t:ty),+;
@@ -101,11 +76,13 @@ macro_rules! parse_grammar_entry {
   };
 }
 
-#[macro_export]
-macro_rules! generate_ast {
+macro_rules! generate_expr_ast {
   ($root_name: ident {
     $($visitor_name:ident $name:ident $($g:ident)* => $($var_name:ident: $t:ty),+;)+
   }) => {
+    generate_ast_visitor!($root_name {
+      $($visitor_name $name $($g)*),*,
+    });
     $(parse_grammar_entry!($visitor_name $name $($g)* {
       $($var_name: $t),+;
     });)+
@@ -114,7 +91,7 @@ macro_rules! generate_ast {
 
 type Expression<T> = Rc<RefCell<dyn Expr<T>>>;
 
-generate_ast! {
+generate_expr_ast! {
   Expr {
     visit_binary_expr Binary T => left: Expression<T>, operator: Token, right: Expression<T>;
     visit_grouping_expr Grouping T => expression: Expression<T>;
@@ -122,6 +99,19 @@ generate_ast! {
     visit_unary_expr Unary T => operator: Token, right: Expression<T>;
   }
 }
+
+// Above generate the following:
+
+// pub trait Expr<T> {
+//   fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error>;
+// }
+
+// pub trait Visitor<T> {
+//   fn visit_binary_expr(&self, expr: &Binary<T>) -> Result<T, Error>;
+//   fn visit_grouping_expr(&self, expr: &Grouping<T>) -> Result<T, Error>;
+//   fn visit_literal_expr(&self, expr: &LiteralObj) -> Result<T, Error>;
+//   fn visit_unary_expr(&self, expr: &Unary<T>) -> Result<T, Error>;
+// }
 
 // pub struct Binary<T> {
 //   pub left: Rc<RefCell<dyn Expr<T>>>,
