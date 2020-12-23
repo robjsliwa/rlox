@@ -4,28 +4,37 @@ use failure::Error;
 use std::cell::RefCell;
 use std::rc::Rc;
 
+#[macro_export]
+macro_rules! parse_ast_visitor_entry {
+  ($visitor_name:ident $t:ident $g:ident) => {
+    fn $visitor_name(&self, expr: &$t<$g>) -> Result<T, Error>;
+  };
+  ($visitor_name:ident $t:ident) => {
+    fn $visitor_name(&self, expr: &$t) -> Result<T, Error>;
+  };
+}
 
 #[macro_export]
-macro_rules! generate_ast_tree {
+macro_rules! generate_ast_visitor {
   ($name: ident {
-    $($visitor_name:ident $t:ty),*,
+    $($visitor_name:ident $t:ident $($g:ident)?),*,
   }) => {
     pub trait $name<T> {
       fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error>;
     }
     
     pub trait Visitor<T> {
-      $(fn $visitor_name(&self, expr: &$t) -> Result<T, Error>;)*
+      $(parse_ast_visitor_entry!($visitor_name $t $($g)?);)*
     }
   };
 }
 
-generate_ast_tree! {
+generate_ast_visitor! {
   Expr {
-    visit_binary_expr Binary<T>,
-    visit_grouping_expr Grouping<T>,
+    visit_binary_expr Binary T,
+    visit_grouping_expr Grouping T,
     visit_literal_expr LiteralObj,
-    visit_unary_expr Unary<T>,
+    visit_unary_expr Unary T,
   }
 }
 
