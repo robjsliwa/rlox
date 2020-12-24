@@ -8,6 +8,7 @@ mod rlox_type;
 mod token;
 mod token_type;
 mod enum_to_str;
+mod generate_ast;
 
 pub use self::ast_printer::*;
 pub use self::error_handler::*;
