@@ -25,7 +25,7 @@ macro_rules! generate_ast_visitor {
   
 #[macro_export]
 macro_rules! parse_grammar_entry {
-  ($visitor_name:ident $name:ident $g:ident {
+  ($root_name: ident $visitor_name:ident $name:ident $g:ident {
     $($var_name:ident: $t:ty),+;
   }) => {
     pub struct $name<$g> {
@@ -42,13 +42,13 @@ macro_rules! parse_grammar_entry {
       }
     }
     
-    impl<T> Expr<T> for $name<$g> {
+    impl<T> $root_name<T> for $name<$g> {
       fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error> {
         visitor.borrow().$visitor_name(self)
       }
     }
   };
-  ($visitor_name:ident $name:ident {
+  ($root_name: ident $visitor_name:ident $name:ident {
     $($var_name:ident: $t:ty),+;
   }) => {
     pub struct $name {
@@ -65,7 +65,7 @@ macro_rules! parse_grammar_entry {
       }
     }
     
-    impl<T> Expr<T> for $name {
+    impl<T> $root_name<T> for $name {
       fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error> {
         visitor.borrow().$visitor_name(self)
       }
@@ -81,7 +81,7 @@ macro_rules! generate_ast {
     crate::generate_ast_visitor!($root_name {
       $($visitor_name $name $($g)*),*,
     });
-    $(crate::parse_grammar_entry!($visitor_name $name $($g)* {
+    $(crate::parse_grammar_entry!($root_name $visitor_name $name $($g)* {
       $($var_name: $t),+;
     });)+
   };

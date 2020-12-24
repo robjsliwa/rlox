@@ -5,7 +5,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use crate::generate_ast;
 
-type Exp<T> = Rc<RefCell<dyn Expr<T>>>;
+pub type Exp<T> = Rc<RefCell<dyn Expr<T>>>;
 
 generate_ast! {
   Expr {

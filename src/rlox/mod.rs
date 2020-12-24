@@ -9,6 +9,7 @@ mod token;
 mod token_type;
 mod enum_to_str;
 mod generate_ast;
+mod stmt;
 
 pub use self::ast_printer::*;
 pub use self::error_handler::*;
@@ -19,3 +20,4 @@ pub use self::parser::*;
 pub use self::rlox_type::*;
 pub use self::token::*;
 pub use self::token_type::*;
+pub use self::stmt::*;
