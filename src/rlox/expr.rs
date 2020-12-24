@@ -76,7 +76,7 @@ macro_rules! parse_grammar_entry {
   };
 }
 
-macro_rules! generate_expr_ast {
+macro_rules! generate_ast {
   ($root_name: ident {
     $($visitor_name:ident $name:ident $($g:ident)* => $($var_name:ident: $t:ty),+;)+
   }) => {
@@ -91,7 +91,7 @@ macro_rules! generate_expr_ast {
 
 type Exp<T> = Rc<RefCell<dyn Expr<T>>>;
 
-generate_expr_ast! {
+generate_ast! {
   Expr {
     visit_binary_expr Binary T => left: Exp<T>, operator: Token, right: Exp<T>;
     visit_grouping_expr Grouping T => expression: Exp<T>;
