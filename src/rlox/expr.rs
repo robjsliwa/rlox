@@ -89,16 +89,23 @@ macro_rules! generate_expr_ast {
   };
 }
 
-type Expression<T> = Rc<RefCell<dyn Expr<T>>>;
+type Exp<T> = Rc<RefCell<dyn Expr<T>>>;
 
 generate_expr_ast! {
   Expr {
-    visit_binary_expr Binary T => left: Expression<T>, operator: Token, right: Expression<T>;
-    visit_grouping_expr Grouping T => expression: Expression<T>;
+    visit_binary_expr Binary T => left: Exp<T>, operator: Token, right: Exp<T>;
+    visit_grouping_expr Grouping T => expression: Exp<T>;
     visit_literal_expr LiteralObj => value: Option<Literal>;
-    visit_unary_expr Unary T => operator: Token, right: Expression<T>;
+    visit_unary_expr Unary T => operator: Token, right: Exp<T>;
   }
 }
+
+// generate_expr_ast! {
+//   Stmt {
+//     visit_expression_stmt Expression T => expression: Exp<T>;
+//     visit_print_stmt Print T => expression: Exp<T>;
+//   }
+// }
 
 // Above generate the following:
 
