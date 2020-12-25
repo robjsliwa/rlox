@@ -30,15 +30,7 @@ fn run(data: Vec<char>) -> Result<(), Error> {
     let expression = parser.parse();
 
     match expression {
-        Ok(expr) => {
-            // let ast_printer = AstPrinter {};
-            // println!("{:?}", ast_printer.print(expr));
-            match Interpreter::interpret(expr) {
-                Ok(val) => println!("{}", val),
-                Err(e) => eprintln!("{}", e),
-            }
-            
-        }
+        Ok(expr) => Interpreter::interpret(expr),
         Err(e) => eprintln!("Error: {}", e),
     }
 

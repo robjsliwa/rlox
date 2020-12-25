@@ -1,21 +1,30 @@
-use super::{expr::*, rlox_type::*, token_type::*, literal::*};
+use super::{expr::*, stmt::*, rlox_type::*, token_type::*, literal::*};
 use failure::{format_err, Error};
 use std::cell::RefCell;
 use std::rc::Rc;
 
-type Expression = Rc<RefCell<dyn Expr<RloxType>>>;
+type Exp = Rc<RefCell<dyn Expr<RloxType>>>;
+type Stm = Rc<RefCell<dyn Stmt<RloxType>>>;
 
 #[derive(Debug, Clone)]
 pub struct Interpreter {}
 
 impl Interpreter {
-  pub fn interpret(expression: Expression) -> Result<RloxType, Error> {
+  pub fn interpret(expressions: Vec<Stm>) {
     let interpreter = Interpreter {};
-    interpreter.evaluate(expression)
+    for expression in expressions {
+      if let Err(e) = interpreter.evaluate_stmt(expression) {
+        eprintln!("Error {}", e);
+      }
+    }
   }
 
-  fn evaluate(&self, expr: Expression) -> Result<RloxType, Error> {
+  fn evaluate_expr(&self, expr: Exp) -> Result<RloxType, Error> {
     expr.borrow().accept(Rc::new(RefCell::new(self.clone())))
+  }
+
+  fn evaluate_stmt(&self, stmt: Stm) -> Result<RloxType, Error> {
+    stmt.borrow().accept(Rc::new(RefCell::new(self.clone())))
   }
 
   fn is_truthy(&self, rlox_type: RloxType) -> Result<RloxType, Error> {
@@ -77,10 +86,22 @@ impl Interpreter {
   }
 }
 
-impl Visitor<RloxType> for Interpreter {
+impl super::stmt::Visitor<RloxType> for Interpreter {
+  fn visit_expression_stmt(&self, expr: &Expression<RloxType>) -> Result<RloxType, Error> {
+    Ok(self.evaluate_expr(expr.expression.clone())?)
+  }
+
+  fn visit_print_stmt(&self, expr: &Print<RloxType>) -> Result<RloxType, Error> {
+    let value = self.evaluate_expr(expr.expression.clone())?;
+    println!("{}", value);
+    Ok(RloxType::NullType)
+  }
+}
+
+impl super::expr::Visitor<RloxType> for Interpreter {
   fn visit_binary_expr(&self, expr: &Binary<RloxType>) -> Result<RloxType, Error> {
-    let left = self.evaluate(expr.left.clone())?;
-    let right = self.evaluate(expr.right.clone())?;
+    let left = self.evaluate_expr(expr.left.clone())?;
+    let right = self.evaluate_expr(expr.right.clone())?;
 
     self.compute_binary_operand(&expr.operator.token_type, left, right)
   }
@@ -97,7 +118,7 @@ impl Visitor<RloxType> for Interpreter {
   }
 
   fn visit_unary_expr(&self, expr: &Unary<RloxType>) -> Result<RloxType, Error> {
-    let right = self.evaluate(expr.right.clone())?;
+    let right = self.evaluate_expr(expr.right.clone())?;
 
     match expr.operator.token_type {
       TokenType::MINUS => {
@@ -125,25 +146,31 @@ mod tests {
     let mut scanner = Scanner::new(data);
     let tokens = scanner.scan_tokens();
     let parser = Parser::new(tokens);
-    let expression = parser.parse()?;
-    let val = Interpreter::interpret(expression)?;
-    Ok(val)
+    let statements = parser.parse()?;
+
+    assert_eq!(statements.len(), 1);
+    if let Some(statement) = statements.first() {
+      let interpreter = Interpreter {};
+      let val = interpreter.evaluate_stmt(statement.clone())?;
+      return Ok(val);
+    }
+    Err(format_err!("Invalid test expression"))
   }
 
   #[test]
   fn test_basic_arithmetic() -> Result<(), Error> {
     let test_input: HashMap<&str, f64> = [
-      ("1 + 2", 3.0),
-      ("-1 + 2", 1.0),
-      ("-1 + -2", -3.0),
-      ("5+5", 10.0),
-      ("25 - 1", 24.0),
-      ("-3 - 3", -6.0),
-      ("-3 - -3", 0.0),
-      ("5*5", 25.0),
-      ("25 /5", 5.0),
-      ("1 - 4 * 4", -15.0),
-      ("25 / 5 + 2 * 4", 13.0),
+      ("1 + 2;", 3.0),
+      ("-1 + 2;", 1.0),
+      ("-1 + -2;", -3.0),
+      ("5+5;", 10.0),
+      ("25 - 1;", 24.0),
+      ("-3 - 3;", -6.0),
+      ("-3 - -3;", 0.0),
+      ("5*5;", 25.0),
+      ("25 /5;", 5.0),
+      ("1 - 4 * 4;", -15.0),
+      ("25 / 5 + 2 * 4;", 13.0),
     ].iter().cloned().collect();
 
     for (&input, &expected_result) in test_input.iter() {
@@ -157,17 +184,17 @@ mod tests {
   #[test]
   fn test_truthiness() -> Result<(), Error> {
     let test_input: HashMap<&str, bool> = [
-      ("1 < 2", true),
-      ("-1 <= 2", true),
-      ("25 >= 25", true),
-      ("5 > 5", false),
-      ("-25 > 1", false),
-      ("-3 != 3", true),
-      ("-3 == -3", true),
-      ("5==5", true),
-      ("25 >= 5", true),
-      ("1 - 4 > 4", false),
-      ("25 / 5 == 2 * 4 - 3", true),
+      ("1 < 2;", true),
+      ("-1 <= 2;", true),
+      ("25 >= 25;", true),
+      ("5 > 5;", false),
+      ("-25 > 1;", false),
+      ("-3 != 3;", true),
+      ("-3 == -3;", true),
+      ("5==5;", true),
+      ("25 >= 5;", true),
+      ("1 - 4 > 4;", false),
+      ("25 / 5 == 2 * 4 - 3;", true),
     ].iter().cloned().collect();
 
     for (&input, &expected_result) in test_input.iter() {

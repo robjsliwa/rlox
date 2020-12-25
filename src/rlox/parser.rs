@@ -1,4 +1,5 @@
 use super::expr::*;
+use super::stmt::*;
 use super::literal::*;
 use super::token::*;
 use super::token_type::*;
@@ -7,7 +8,9 @@ use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 pub type ParserExpr<T> = Rc<RefCell<dyn Expr<T>>>;
-pub type ParserResult<T> = Result<ParserExpr<T>, Error>;
+pub type ParserExprResult<T> = Result<ParserExpr<T>, Error>;
+pub type ParserStmt<T> = Rc<RefCell<dyn Stmt<T>>>;
+pub type ParserStmtResult<T> = Result<ParserStmt<T>, Error>;
 
 pub struct Parser {
   tokens: Vec<Token>,
@@ -22,11 +25,11 @@ impl Parser {
     }
   }
 
-  fn expression<T: 'static>(&self) -> ParserResult<T> {
+  fn expression<T: 'static>(&self) -> ParserExprResult<T> {
     self.equality()
   }
 
-  fn equality<T: 'static>(&self) -> ParserResult<T> {
+  fn equality<T: 'static>(&self) -> ParserExprResult<T> {
     let mut expr = self.comparison()?;
 
     while self.token_match(vec![TokenType::BANGEQUAL, TokenType::EQUALEQUAL]) {
@@ -75,7 +78,7 @@ impl Parser {
     self.tokens[self.current.get() - 1].clone()
   }
 
-  fn comparison<T: 'static>(&self) -> ParserResult<T> {
+  fn comparison<T: 'static>(&self) -> ParserExprResult<T> {
     let mut expr = self.addition()?;
 
     while self.token_match(vec![
@@ -92,7 +95,7 @@ impl Parser {
     Ok(expr)
   }
 
-  fn addition<T: 'static>(&self) -> ParserResult<T> {
+  fn addition<T: 'static>(&self) -> ParserExprResult<T> {
     let mut expr = self.multiplication()?;
 
     while self.token_match(vec![TokenType::MINUS, TokenType::PLUS]) {
@@ -104,7 +107,7 @@ impl Parser {
     Ok(expr)
   }
 
-  fn multiplication<T: 'static>(&self) -> ParserResult<T> {
+  fn multiplication<T: 'static>(&self) -> ParserExprResult<T> {
     let mut expr = self.unary()?;
 
     while self.token_match(vec![TokenType::SLASH, TokenType::STAR]) {
@@ -116,7 +119,7 @@ impl Parser {
     Ok(expr)
   }
 
-  fn unary<T: 'static>(&self) -> ParserResult<T> {
+  fn unary<T: 'static>(&self) -> ParserExprResult<T> {
     if self.token_match(vec![TokenType::BANG, TokenType::MINUS]) {
       let operator = self.previous();
       let right = self.unary()?;
@@ -126,7 +129,7 @@ impl Parser {
     self.primary()
   }
 
-  fn primary<T: 'static>(&self) -> ParserResult<T> {
+  fn primary<T: 'static>(&self) -> ParserExprResult<T> {
     if self.token_match(vec![TokenType::FALSE]) {
       return Ok(Rc::new(RefCell::new(LiteralObj::new(Some(
         Literal::BooleanType(false),
@@ -190,7 +193,32 @@ impl Parser {
     }
   }
 
-  pub fn parse<T: 'static>(&self) -> ParserResult<T> {
-    self.expression()
+  fn statement<T: 'static>(&self) -> ParserStmtResult<T> {
+    if self.token_match(vec![TokenType::PRINT]) {
+      return self.print_statement();
+    }
+
+    self.expression_statement()
+  }
+
+  fn print_statement<T: 'static>(&self) -> ParserStmtResult<T> {
+    let value = self.expression()?;
+    self.consume(TokenType::SEMICOLON, "Expected ';' after value.")?;
+    Ok(Rc::new(RefCell::new(Print::new(value))))
+  }
+
+  fn expression_statement<T: 'static>(&self) -> ParserStmtResult<T> {
+    let expr = self.expression()?;
+    self.consume(TokenType::SEMICOLON, "Expected ';' after expression.")?;
+    Ok(Rc::new(RefCell::new(Expression::new(expr))))
+  }
+
+  pub fn parse<T: 'static>(&self) -> Result<Vec<ParserStmt<T>>, Error> {
+    let mut statements = Vec::new();
+    while !self.is_at_end() {
+      statements.push(self.statement()?);
+    }
+
+    Ok(statements)
   }
 }

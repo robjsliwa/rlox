@@ -3,100 +3,26 @@ use super::token::*;
 use failure::Error;
 use std::cell::RefCell;
 use std::rc::Rc;
+use crate::generate_ast;
 
-macro_rules! parse_ast_visitor_entry {
-  ($visitor_name:ident $t:ident $g:ident) => {
-    fn $visitor_name(&self, expr: &$t<$g>) -> Result<T, Error>;
-  };
-  ($visitor_name:ident $t:ident) => {
-    fn $visitor_name(&self, expr: &$t) -> Result<T, Error>;
-  };
-}
+// expression     → equality ;
+// equality       → comparison ( ( "!=" | "==" ) comparison )* ;
+// comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+// term           → factor ( ( "-" | "+" ) factor )* ;
+// factor         → unary ( ( "/" | "*" ) unary )* ;
+// unary          → ( "!" | "-" ) unary
+//                | primary ;
+// primary        → NUMBER | STRING | "true" | "false" | "nil"
+//                | "(" expression ")" ;
 
-macro_rules! generate_ast_visitor {
-  ($name: ident {
-    $($visitor_name:ident $t:ident $($g:ident)?),*,
-  }) => {
-    pub trait $name<T> {
-      fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error>;
-    }
-    
-    pub trait Visitor<T> {
-      $(parse_ast_visitor_entry!($visitor_name $t $($g)?);)*
-    }
-  };
-}
+pub type Exp<T> = Rc<RefCell<dyn Expr<T>>>;
 
-macro_rules! parse_grammar_entry {
-  ($visitor_name:ident $name:ident $g:ident {
-    $($var_name:ident: $t:ty),+;
-  }) => {
-    pub struct $name<$g> {
-      $(pub $var_name: $t),*,
-    }
-    
-    impl<$g> $name<$g> {
-      pub fn new(
-        $($var_name: $t),*,
-      ) -> $name<$g> {
-        $name {
-          $($var_name),*,
-        }
-      }
-    }
-    
-    impl<T> Expr<T> for $name<$g> {
-      fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error> {
-        visitor.borrow().$visitor_name(self)
-      }
-    }
-  };
-  ($visitor_name:ident $name:ident {
-    $($var_name:ident: $t:ty),+;
-  }) => {
-    pub struct $name {
-      $(pub $var_name: $t),*,
-    }
-    
-    impl $name {
-      pub fn new(
-        $($var_name: $t),*,
-      ) -> $name {
-        $name {
-          $($var_name),*,
-        }
-      }
-    }
-    
-    impl<T> Expr<T> for $name {
-      fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error> {
-        visitor.borrow().$visitor_name(self)
-      }
-    }
-  };
-}
-
-macro_rules! generate_expr_ast {
-  ($root_name: ident {
-    $($visitor_name:ident $name:ident $($g:ident)* => $($var_name:ident: $t:ty),+;)+
-  }) => {
-    generate_ast_visitor!($root_name {
-      $($visitor_name $name $($g)*),*,
-    });
-    $(parse_grammar_entry!($visitor_name $name $($g)* {
-      $($var_name: $t),+;
-    });)+
-  };
-}
-
-type Expression<T> = Rc<RefCell<dyn Expr<T>>>;
-
-generate_expr_ast! {
+generate_ast! {
   Expr {
-    visit_binary_expr Binary T => left: Expression<T>, operator: Token, right: Expression<T>;
-    visit_grouping_expr Grouping T => expression: Expression<T>;
+    visit_binary_expr Binary T => left: Exp<T>, operator: Token, right: Exp<T>;
+    visit_grouping_expr Grouping T => expression: Exp<T>;
     visit_literal_expr LiteralObj => value: Option<Literal>;
-    visit_unary_expr Unary T => operator: Token, right: Expression<T>;
+    visit_unary_expr Unary T => operator: Token, right: Exp<T>;
   }
 }
 
