@@ -5,6 +5,16 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use crate::generate_ast;
 
+// expression     → equality ;
+// equality       → comparison ( ( "!=" | "==" ) comparison )* ;
+// comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
+// term           → factor ( ( "-" | "+" ) factor )* ;
+// factor         → unary ( ( "/" | "*" ) unary )* ;
+// unary          → ( "!" | "-" ) unary
+//                | primary ;
+// primary        → NUMBER | STRING | "true" | "false" | "nil"
+//                | "(" expression ")" ;
+
 pub type Exp<T> = Rc<RefCell<dyn Expr<T>>>;
 
 generate_ast! {
@@ -15,13 +25,6 @@ generate_ast! {
     visit_unary_expr Unary T => operator: Token, right: Exp<T>;
   }
 }
-
-// generate_expr_ast! {
-//   Stmt {
-//     visit_expression_stmt Expression T => expression: Exp<T>;
-//     visit_print_stmt Print T => expression: Exp<T>;
-//   }
-// }
 
 // Above generate the following:
 
