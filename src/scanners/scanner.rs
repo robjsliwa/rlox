@@ -6,7 +6,6 @@ use std::collections::HashMap;
 
 type KeywordsType = HashMap<String, TokenType>;
 
-#[derive(Debug)]
 pub struct Scanner {
   source: Vec<char>,
   tokens: Vec<Token>,
@@ -278,7 +277,7 @@ mod tests {
     ];
 
     for (i, t) in tokens.iter().enumerate() {
-      assert_eq!(assert_tokens[i], t.token_type);
+      assert_eq!(assert_tokens[i].name(), t.token_type.name());
     }
   }
 
@@ -311,7 +310,7 @@ mod tests {
     ];
 
     for (i, t) in tokens.iter().enumerate() {
-      assert_eq!(assert_tokens[i], t.token_type);
+      assert_eq!(assert_tokens[i].name(), t.token_type.name());
     }
   }
 
@@ -345,7 +344,7 @@ mod tests {
     ];
 
     for (i, t) in tokens.iter().enumerate() {
-      assert_eq!(assert_tokens[i], t.token_type);
+      assert_eq!(assert_tokens[i].name(), t.token_type.name());
     }
   }
 
@@ -381,7 +380,7 @@ mod tests {
     ];
 
     for (i, t) in tokens.iter().enumerate() {
-      assert_eq!(assert_tokens[i], t.token_type);
+      assert_eq!(assert_tokens[i].name(), t.token_type.name());
     }
   }
 
@@ -419,7 +418,7 @@ mod tests {
     ];
 
     for (i, t) in tokens.iter().enumerate() {
-      assert_eq!(assert_tokens[i], t.token_type);
+      assert_eq!(assert_tokens[i].name(), t.token_type.name());
     }
   }
 }

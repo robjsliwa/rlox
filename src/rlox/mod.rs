@@ -10,6 +10,7 @@ mod token_type;
 mod enum_to_str;
 mod generate_ast;
 mod stmt;
+mod environment;
 
 pub use self::ast_printer::*;
 pub use self::error_handler::*;

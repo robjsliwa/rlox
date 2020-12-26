@@ -154,6 +154,10 @@ impl Parser {
       ))));
     }
 
+    if self.token_match(vec![TokenType::IDENTIFIER]) {
+      return Ok(Rc::new(RefCell::new(Variable::new(self.previous()))));
+    }
+
     if self.token_match(vec![TokenType::LEFTPAREN]) {
       let expr = self.expression()?;
       self.consume(TokenType::RIGHTPAREN, "Expected ')' after expression.")?;
@@ -213,10 +217,40 @@ impl Parser {
     Ok(Rc::new(RefCell::new(Expression::new(expr))))
   }
 
+  fn declaration_impl<T: 'static>(&self) -> ParserStmtResult<T> {
+    if self.token_match(vec![TokenType::VAR]) {
+      return Ok(self.var_declaration()?);
+    }
+
+    self.statement()
+  }
+
+  fn declaration<T: 'static>(&self) -> ParserStmtResult<T> {
+    match self.declaration_impl() {
+      Ok(d) => Ok(d),
+      Err(e) => {
+        self.synchronize();
+        Err(e)
+      }
+    }
+  }
+
+  fn var_declaration<T: 'static>(&self) -> ParserStmtResult<T> {
+    let name = self.consume(TokenType::IDENTIFIER, "Expect variable name.")?;
+
+    let mut initializer: std::rc::Rc<std::cell::RefCell<dyn Expr<T>>> = Rc::new(RefCell::new(LiteralObj::new(Some(Literal::NullType))));
+    if self.token_match(vec![TokenType::EQUAL]) {
+      initializer = self.expression()?;
+    }
+
+    self.consume(TokenType::SEMICOLON, "Expect ';' after variable declaration.");
+    Ok(Rc::new(RefCell::new(Var::new(name, initializer))))
+  }
+
   pub fn parse<T: 'static>(&self) -> Result<Vec<ParserStmt<T>>, Error> {
     let mut statements = Vec::new();
     while !self.is_at_end() {
-      statements.push(self.statement()?);
+      statements.push(self.declaration()?);
     }
 
     Ok(statements)

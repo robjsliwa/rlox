@@ -23,6 +23,7 @@ generate_ast! {
     visit_grouping_expr Grouping T => expression: Exp<T>;
     visit_literal_expr LiteralObj => value: Option<Literal>;
     visit_unary_expr Unary T => operator: Token, right: Exp<T>;
+    visit_variable_expr Variable => name: Token;
   }
 }
 
