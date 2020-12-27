@@ -26,4 +26,15 @@ impl Environment {
       None => Err(format_err!("Undefined variable '{}'.", name)),
     }
   }
+
+  pub fn assign(&self, name: &str, value: Literal) -> Result<(), Error> {
+    let mut values = self.values.borrow_mut();
+    match values.get(name) {
+      Some(_) => {
+        values.insert(name.to_string(), value);
+        Ok(())
+      }
+      None => Err(format_err!("Undefined variable '{}'.", name)),
+    }
+  }
 }

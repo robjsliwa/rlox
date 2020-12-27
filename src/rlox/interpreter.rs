@@ -157,6 +157,12 @@ impl super::expr::Visitor<RloxType> for Interpreter {
   fn visit_variable_expr(&self, expr: &Variable) -> Result<RloxType, Error> {
     self.environment.get(&expr.name.lexeme)
   }
+
+  fn visit_assign_expr(&self, expr: &Assign<RloxType>) -> Result<RloxType, Error> {
+    let value = self.evaluate_expr(expr.value.clone())?;
+    self.environment.assign(&expr.name.lexeme, value.clone())?;
+    Ok(value)
+  }
 }
 
 #[cfg(test)]

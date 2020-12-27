@@ -19,6 +19,7 @@ pub type Exp<T> = Rc<RefCell<dyn Expr<T>>>;
 
 generate_ast! {
   Expr {
+    visit_assign_expr Assign T => name: Token, value: Exp<T>;
     visit_binary_expr Binary T => left: Exp<T>, operator: Token, right: Exp<T>;
     visit_grouping_expr Grouping T => expression: Exp<T>;
     visit_literal_expr LiteralObj => value: Option<Literal>;

@@ -80,6 +80,11 @@ impl Visitor<String> for AstPrinter {
     // TODO: fix this
     Err(format_err!("Not implemented"))
   }
+
+  fn visit_assign_expr(&self, _: &Assign<String>) -> Result<String, Error> {
+    // TODO: fix this
+    Err(format_err!("Not implemented"))
+  }
 }
 
 #[cfg(test)]

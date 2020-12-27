@@ -15,6 +15,7 @@ macro_rules! generate_ast_visitor {
   }) => {
     pub trait $name<T> {
       fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error>;
+      fn as_any(&self) -> &dyn std::any::Any;
     }
       
     pub trait Visitor<T> {
@@ -28,7 +29,7 @@ macro_rules! parse_grammar_entry {
   ($root_name: ident $visitor_name:ident $name:ident $g:ident {
     $($var_name:ident: $t:ty),+;
   }) => {
-    pub struct $name<$g> {
+    pub struct $name<$g: 'static> {
       $(pub $var_name: $t),*,
     }
     
@@ -45,6 +46,10 @@ macro_rules! parse_grammar_entry {
     impl<T> $root_name<T> for $name<$g> {
       fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error> {
         visitor.borrow().$visitor_name(self)
+      }
+
+      fn as_any(&self) -> &dyn std::any::Any {
+        self
       }
     }
   };
@@ -68,6 +73,10 @@ macro_rules! parse_grammar_entry {
     impl<T> $root_name<T> for $name {
       fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error> {
         visitor.borrow().$visitor_name(self)
+      }
+
+      fn as_any(&self) -> &dyn std::any::Any {
+        self
       }
     }
   };

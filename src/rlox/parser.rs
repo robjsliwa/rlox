@@ -26,7 +26,25 @@ impl Parser {
   }
 
   fn expression<T: 'static>(&self) -> ParserExprResult<T> {
-    self.equality()
+    self.assignment()
+  }
+
+  fn assignment<T: 'static>(&self) -> ParserExprResult<T> {
+    let expr = self.equality()?;
+
+    if self.token_match(vec![TokenType::EQUAL]) {
+      let equals = self.previous();
+      let value = self.assignment()?;
+
+      if let Some(var_expr) = expr.borrow().as_any().downcast_ref::<Variable>() {
+        let name = var_expr.name.clone();
+        return Ok(Rc::new(RefCell::new(Assign::new(name, value))));
+      }
+
+      return Err(format_err!("{} Invalid assignment target.", equals.lexeme))
+    }
+
+    Ok(expr)
   }
 
   fn equality<T: 'static>(&self) -> ParserExprResult<T> {
@@ -243,7 +261,7 @@ impl Parser {
       initializer = self.expression()?;
     }
 
-    self.consume(TokenType::SEMICOLON, "Expect ';' after variable declaration.");
+    self.consume(TokenType::SEMICOLON, "Expect ';' after variable declaration.")?;
     Ok(Rc::new(RefCell::new(Var::new(name, initializer))))
   }
 
