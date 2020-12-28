@@ -25,9 +25,9 @@ impl Interpreter {
     }
   }
 
-  pub fn interpret(&self, expressions: Vec<Stm>) {
-    for expression in expressions {
-      if let Err(e) = self.evaluate_stmt(expression) {
+  pub fn interpret(&self, statements: Vec<Stm>) {
+    for statement in statements {
+      if let Err(e) = self.evaluate_stmt(statement) {
         eprintln!("Error {}", e);
       }
     }

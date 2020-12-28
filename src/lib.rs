@@ -30,9 +30,9 @@ fn run(interpreter: &Interpreter, data: Vec<char>) -> Result<(), Error> {
     let tokens = scanner.scan_tokens();
     // println!("{:?}", tokens);
     let parser = Parser::new(tokens);
-    let expression = parser.parse();
+    let statements = parser.parse();
 
-    match expression {
+    match statements {
         Ok(expr) => interpreter.interpret(expr),
         Err(e) => eprintln!("Error: {}", e),
     }
