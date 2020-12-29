@@ -17,13 +17,13 @@ type Stm = Rc<RefCell<dyn Stmt<RloxType>>>;
 
 #[derive(Clone)]
 pub struct Interpreter {
-  environment: Environment,
+  environment: Rc<RefCell<Environment>>,
 }
 
 impl Interpreter {
   pub fn new() -> Interpreter {
     Interpreter {
-      environment: Environment::new(),
+      environment: Rc::new(RefCell::new(Environment::new())),
     }
   }
 
@@ -101,9 +101,28 @@ impl Interpreter {
 
     return Err(format_err!("unsupported operand type(s) for {}: both operand types must be number", token_type.name()));
   }
+
+  fn execute_block(&self, statements: Vec<Stm>, environment: Environment)-> Result<RloxType, Error> {
+    let previous = self.environment.replace(environment);
+
+    for statement in statements {
+      if let Err(e) = self.evaluate_stmt(statement) {
+        self.environment.replace(previous);
+        return Err(e);
+      }
+    }
+
+    self.environment.replace(previous);
+    Ok(RloxType::NullType)
+  }
 }
 
 impl super::stmt::Visitor<RloxType> for Interpreter {
+  fn visit_block_stmt(&self, stmt: &Block<RloxType>) -> Result<RloxType, Error> {
+    let env = Environment::new_with_parent(self.environment.borrow().clone());
+    Ok(self.execute_block(stmt.statements.clone(), env)?)
+  }
+
   fn visit_expression_stmt(&self, stmt: &Expression<RloxType>) -> Result<RloxType, Error> {
     Ok(self.evaluate_expr(stmt.expression.clone())?)
   }
@@ -117,7 +136,7 @@ impl super::stmt::Visitor<RloxType> for Interpreter {
   fn visit_var_stmt(&self, stmt: &Var<RloxType>) -> Result<RloxType, Error> {
     let value = self.evaluate_expr(stmt.initializer.clone())?;
 
-    self.environment.define(stmt.name.lexeme.clone(), value);
+    self.environment.borrow().define(stmt.name.lexeme.clone(), value);
 
     Ok(RloxType::NullType)
   }
@@ -158,12 +177,12 @@ impl super::expr::Visitor<RloxType> for Interpreter {
   }
 
   fn visit_variable_expr(&self, expr: &Variable) -> Result<RloxType, Error> {
-    self.environment.get(&expr.name.lexeme)
+    self.environment.borrow().get(&expr.name.lexeme)
   }
 
   fn visit_assign_expr(&self, expr: &Assign<RloxType>) -> Result<RloxType, Error> {
     let value = self.evaluate_expr(expr.value.clone())?;
-    self.environment.assign(&expr.name.lexeme, value.clone())?;
+    self.environment.borrow().assign(&expr.name.lexeme, value.clone())?;
     Ok(value)
   }
 }
@@ -247,6 +266,22 @@ mod tests {
       ("var t=5; t;", 5.0),
       ("var t=5; t=t+1; t;", 6.0),
       ("var p=5; p=10; p;", 10.0),
+    ].iter().cloned().collect();
+
+    for (&input, &expected_result) in test_input.iter() {
+      let val = run(input)?;
+      assert_eq!(val.to_string(), RloxType::NumberType(expected_result).to_string());
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_var_scopes() -> Result<(), Error> {
+    let test_input: HashMap<&str, f64> = [
+      ("var t=5; t; {var p=10; t=p;} t;", 10.0),
+      ("var k=1; {var k=10; k=k+1;} k;", 1.0),
+      ("var s=5; {var d=10; d=d+5; s=s+d;} s;", 20.0),
     ].iter().cloned().collect();
 
     for (&input, &expected_result) in test_input.iter() {
