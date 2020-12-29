@@ -11,6 +11,7 @@ pub type ParserExpr<T> = Rc<RefCell<dyn Expr<T>>>;
 pub type ParserExprResult<T> = Result<ParserExpr<T>, Error>;
 pub type ParserStmt<T> = Rc<RefCell<dyn Stmt<T>>>;
 pub type ParserStmtResult<T> = Result<ParserStmt<T>, Error>;
+pub type ParserVecStmtResult<T> = Result<Vec<ParserStmt<T>>, Error>;
 
 pub struct Parser {
   tokens: Vec<Token>,
@@ -220,7 +221,23 @@ impl Parser {
       return self.print_statement();
     }
 
+    if self.token_match(vec![TokenType::LEFTBRACE]) {
+      return Ok(Rc::new(RefCell::new(Block::new(self.block()?))))
+    }
+
     self.expression_statement()
+  }
+
+  fn block<T: 'static>(&self) -> ParserVecStmtResult<T> {
+    let mut statements = Vec::new();
+
+    while !self.check(TokenType::RIGHTBRACE) && !self.is_at_end() {
+      statements.push(self.declaration()?);
+    }
+
+    self.consume(TokenType::RIGHTBRACE, "Expect '}' after block.")?;
+
+    Ok(statements)
   }
 
   fn print_statement<T: 'static>(&self) -> ParserStmtResult<T> {

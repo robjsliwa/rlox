@@ -8,8 +8,10 @@ use crate::generate_ast;
 // program        → statement* EOF ;
 
 // statement      → exprStmt
-//                | printStmt ;
+//                | printStmt
+//                | block ;
 
+// block          → "{" declaration* "}" ;
 // exprStmt       → expression ";" ;
 // printStmt      → "print" expression ";" ;
 
@@ -22,6 +24,7 @@ use crate::generate_ast;
 
 generate_ast! {
   Stmt {
+    visit_block_stmt Block T => statements: Vec<Rc<RefCell<dyn Stmt<T>>>>;
     visit_expression_stmt Expression T => expression: Exp<T>;
     visit_print_stmt Print T => expression: Exp<T>;
     visit_var_stmt Var T => name: Token, initializer: Exp<T>;
