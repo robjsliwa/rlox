@@ -25,15 +25,25 @@ pub fn run_repl() -> Result<(), Error> {
     }
 }
 
+fn repl_printer(result: Result<RloxType, Error>) {
+    match result {
+        Ok(r) => {
+            if r != RloxType::NullType {
+                println!("{}", r);
+            }
+        }
+        Err(e) => eprintln!("{}", e),
+    }
+}
+
 fn run(interpreter: &Interpreter, data: Vec<char>) -> Result<(), Error> {
     let mut scanner = Scanner::new(data);
     let tokens = scanner.scan_tokens();
-    // println!("{:?}", tokens);
     let parser = Parser::new(tokens);
     let statements = parser.parse();
 
     match statements {
-        Ok(expr) => interpreter.interpret(expr),
+        Ok(stmt) => interpreter.interpret(stmt, Some(repl_printer)),
         Err(e) => eprintln!("Error: {}", e),
     }
 

@@ -7,8 +7,10 @@ use super::{
   environment::*,
 };
 use failure::{format_err, Error};
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::{
+  cell::RefCell,
+  rc::Rc,
+};
 
 type Exp = Rc<RefCell<dyn Expr<RloxType>>>;
 type Stm = Rc<RefCell<dyn Stmt<RloxType>>>;
@@ -25,10 +27,11 @@ impl Interpreter {
     }
   }
 
-  pub fn interpret(&self, statements: Vec<Stm>) {
+  pub fn interpret(&self, statements: Vec<Stm>, callback: Option<fn(resutl: Result<RloxType, Error>)>) {
     for statement in statements {
-      if let Err(e) = self.evaluate_stmt(statement) {
-        eprintln!("Error {}", e);
+      let result = self.evaluate_stmt(statement);
+      if let Some(f) = callback {
+        f(result);
       }
     }
   }
@@ -179,16 +182,15 @@ mod tests {
     let tokens = scanner.scan_tokens();
     let parser = Parser::new(tokens);
     let statements = parser.parse()?;
+    let interpreter = Interpreter::new();
 
-    assert_eq!(statements.len(), 1);
-    if let Some(statement) = statements.first() {
-      let interpreter = Interpreter {
-        environment: Environment::new(),
-      };
-      let val = interpreter.evaluate_stmt(statement.clone())?;
-      return Ok(val);
+    let mut final_result = RloxType::NullType;
+
+    for statement in statements {
+      final_result = interpreter.evaluate_stmt(statement.clone())?;
     }
-    Err(format_err!("Invalid test expression"))
+
+    Ok(final_result)
   }
 
   #[test]
@@ -234,6 +236,22 @@ mod tests {
     for (&input, &expected_result) in test_input.iter() {
       let val = run(input)?;
       assert_eq!(val.to_string(), RloxType::BooleanType(expected_result).to_string());
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_global_vars() -> Result<(), Error> {
+    let test_input: HashMap<&str, f64> = [
+      ("var t=5; t;", 5.0),
+      ("var t=5; t=t+1; t;", 6.0),
+      ("var p=5; p=10; p;", 10.0),
+    ].iter().cloned().collect();
+
+    for (&input, &expected_result) in test_input.iter() {
+      let val = run(input)?;
+      assert_eq!(val.to_string(), RloxType::NumberType(expected_result).to_string());
     }
 
     Ok(())
