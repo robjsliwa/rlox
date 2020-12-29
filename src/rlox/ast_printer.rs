@@ -75,6 +75,16 @@ impl Visitor<String> for AstPrinter {
   fn visit_unary_expr(&self, expr: &Unary<String>) -> Result<String, Error> {
     self.parenthesize_expr(&expr.operator.lexeme, expr.right.clone())
   }
+
+  fn visit_variable_expr(&self, _: &Variable) -> Result<String, Error> {
+    // TODO: fix this
+    Err(format_err!("Not implemented"))
+  }
+
+  fn visit_assign_expr(&self, _: &Assign<String>) -> Result<String, Error> {
+    // TODO: fix this
+    Err(format_err!("Not implemented"))
+  }
 }
 
 #[cfg(test)]

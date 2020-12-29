@@ -1,20 +1,37 @@
-use super::{expr::*, stmt::*, rlox_type::*, token_type::*, literal::*};
+use super::{
+  expr::*,
+  stmt::*,
+  rlox_type::*,
+  token_type::*,
+  literal::*,
+  environment::*,
+};
 use failure::{format_err, Error};
-use std::cell::RefCell;
-use std::rc::Rc;
+use std::{
+  cell::RefCell,
+  rc::Rc,
+};
 
 type Exp = Rc<RefCell<dyn Expr<RloxType>>>;
 type Stm = Rc<RefCell<dyn Stmt<RloxType>>>;
 
-#[derive(Debug, Clone)]
-pub struct Interpreter {}
+#[derive(Clone)]
+pub struct Interpreter {
+  environment: Environment,
+}
 
 impl Interpreter {
-  pub fn interpret(expressions: Vec<Stm>) {
-    let interpreter = Interpreter {};
-    for expression in expressions {
-      if let Err(e) = interpreter.evaluate_stmt(expression) {
-        eprintln!("Error {}", e);
+  pub fn new() -> Interpreter {
+    Interpreter {
+      environment: Environment::new(),
+    }
+  }
+
+  pub fn interpret(&self, statements: Vec<Stm>, callback: Option<fn(resutl: Result<RloxType, Error>)>) {
+    for statement in statements {
+      let result = self.evaluate_stmt(statement);
+      if let Some(f) = callback {
+        f(result);
       }
     }
   }
@@ -87,13 +104,21 @@ impl Interpreter {
 }
 
 impl super::stmt::Visitor<RloxType> for Interpreter {
-  fn visit_expression_stmt(&self, expr: &Expression<RloxType>) -> Result<RloxType, Error> {
-    Ok(self.evaluate_expr(expr.expression.clone())?)
+  fn visit_expression_stmt(&self, stmt: &Expression<RloxType>) -> Result<RloxType, Error> {
+    Ok(self.evaluate_expr(stmt.expression.clone())?)
   }
 
-  fn visit_print_stmt(&self, expr: &Print<RloxType>) -> Result<RloxType, Error> {
-    let value = self.evaluate_expr(expr.expression.clone())?;
+  fn visit_print_stmt(&self, stmt: &Print<RloxType>) -> Result<RloxType, Error> {
+    let value = self.evaluate_expr(stmt.expression.clone())?;
     println!("{}", value);
+    Ok(RloxType::NullType)
+  }
+
+  fn visit_var_stmt(&self, stmt: &Var<RloxType>) -> Result<RloxType, Error> {
+    let value = self.evaluate_expr(stmt.initializer.clone())?;
+
+    self.environment.define(stmt.name.lexeme.clone(), value);
+
     Ok(RloxType::NullType)
   }
 }
@@ -131,6 +156,16 @@ impl super::expr::Visitor<RloxType> for Interpreter {
       _ => Err(format_err!("unsupported operand")),
     }
   }
+
+  fn visit_variable_expr(&self, expr: &Variable) -> Result<RloxType, Error> {
+    self.environment.get(&expr.name.lexeme)
+  }
+
+  fn visit_assign_expr(&self, expr: &Assign<RloxType>) -> Result<RloxType, Error> {
+    let value = self.evaluate_expr(expr.value.clone())?;
+    self.environment.assign(&expr.name.lexeme, value.clone())?;
+    Ok(value)
+  }
 }
 
 #[cfg(test)]
@@ -147,14 +182,15 @@ mod tests {
     let tokens = scanner.scan_tokens();
     let parser = Parser::new(tokens);
     let statements = parser.parse()?;
+    let interpreter = Interpreter::new();
 
-    assert_eq!(statements.len(), 1);
-    if let Some(statement) = statements.first() {
-      let interpreter = Interpreter {};
-      let val = interpreter.evaluate_stmt(statement.clone())?;
-      return Ok(val);
+    let mut final_result = RloxType::NullType;
+
+    for statement in statements {
+      final_result = interpreter.evaluate_stmt(statement.clone())?;
     }
-    Err(format_err!("Invalid test expression"))
+
+    Ok(final_result)
   }
 
   #[test]
@@ -175,7 +211,7 @@ mod tests {
 
     for (&input, &expected_result) in test_input.iter() {
       let val = run(input)?;
-      assert_eq!(val, RloxType::NumberType(expected_result));
+      assert_eq!(val.to_string(), RloxType::NumberType(expected_result).to_string());
     }
 
     Ok(())
@@ -199,7 +235,23 @@ mod tests {
 
     for (&input, &expected_result) in test_input.iter() {
       let val = run(input)?;
-      assert_eq!(val, RloxType::BooleanType(expected_result));
+      assert_eq!(val.to_string(), RloxType::BooleanType(expected_result).to_string());
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_global_vars() -> Result<(), Error> {
+    let test_input: HashMap<&str, f64> = [
+      ("var t=5; t;", 5.0),
+      ("var t=5; t=t+1; t;", 6.0),
+      ("var p=5; p=10; p;", 10.0),
+    ].iter().cloned().collect();
+
+    for (&input, &expected_result) in test_input.iter() {
+      let val = run(input)?;
+      assert_eq!(val.to_string(), RloxType::NumberType(expected_result).to_string());
     }
 
     Ok(())

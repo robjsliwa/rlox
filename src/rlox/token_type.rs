@@ -1,7 +1,7 @@
 use crate::enum_to_str;
 
 enum_to_str! {
-  #[derive(Clone, Debug, PartialEq)]
+  #[derive(Clone, PartialEq)]
   pub enum TokenType {
     // Single-character tokens.
     LEFTPAREN,
