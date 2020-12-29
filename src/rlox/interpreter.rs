@@ -275,4 +275,20 @@ mod tests {
 
     Ok(())
   }
+
+  #[test]
+  fn test_var_scopes() -> Result<(), Error> {
+    let test_input: HashMap<&str, f64> = [
+      ("var t=5; t; {var p=10; t=p;} t;", 10.0),
+      ("var k=1; {var k=10; k=k+1;} k;", 1.0),
+      ("var s=5; {var d=10; d=d+5; s=s+d;} s;", 20.0),
+    ].iter().cloned().collect();
+
+    for (&input, &expected_result) in test_input.iter() {
+      let val = run(input)?;
+      assert_eq!(val.to_string(), RloxType::NumberType(expected_result).to_string());
+    }
+
+    Ok(())
+  }
 }
