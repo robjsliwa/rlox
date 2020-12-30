@@ -31,7 +31,7 @@ impl Parser {
   }
 
   fn assignment<T: 'static>(&self) -> ParserExprResult<T> {
-    let expr = self.equality()?;
+    let expr = self.or()?;
 
     if self.token_match(vec![TokenType::EQUAL]) {
       let equals = self.previous();
@@ -43,6 +43,30 @@ impl Parser {
       }
 
       return Err(format_err!("{} Invalid assignment target.", equals.lexeme))
+    }
+
+    Ok(expr)
+  }
+
+  fn or<T: 'static>(&self) -> ParserExprResult<T> {
+    let mut expr = self.and()?;
+    
+    while self.token_match(vec![TokenType::OR]) {
+      let operator = self.previous();
+      let right = self.and()?;
+      expr = Rc::new(RefCell::new(Logical::new(expr, operator, right)));
+    }
+
+    Ok(expr)
+  }
+
+  fn and<T: 'static>(&self) -> ParserExprResult<T> {
+    let mut expr = self.equality()?;
+
+    while self.token_match(vec![TokenType::AND]) {
+      let operator = self.previous();
+      let right = self.equality()?;
+      expr = Rc::new(RefCell::new(Logical::new(expr, operator, right)));
     }
 
     Ok(expr)
