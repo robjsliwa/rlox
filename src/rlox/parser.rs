@@ -217,6 +217,10 @@ impl Parser {
   }
 
   fn statement<T: 'static>(&self) -> ParserStmtResult<T> {
+    if self.token_match(vec![TokenType::IF]) {
+      return self.if_statement();
+    }
+
     if self.token_match(vec![TokenType::PRINT]) {
       return self.print_statement();
     }
@@ -226,6 +230,20 @@ impl Parser {
     }
 
     self.expression_statement()
+  }
+
+  fn if_statement<T: 'static>(&self) -> ParserStmtResult<T> {
+    self.consume(TokenType::LEFTPAREN, "Expect '(' after if.")?;
+    let condition = self.expression()?;
+    self.consume(TokenType::RIGHTPAREN, "Expect ')' after if confition.")?;
+
+    let then_branch = self.statement()?;
+    let mut else_branch: Option<Stm<T>> = None;
+    if self.token_match(vec![TokenType::ELSE]) {
+      else_branch = Some(self.statement()?);
+    }
+
+    Ok(Rc::new(RefCell::new(If::new(condition, then_branch, else_branch))))
   }
 
   fn block<T: 'static>(&self) -> ParserVecStmtResult<T> {

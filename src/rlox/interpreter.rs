@@ -47,7 +47,7 @@ impl Interpreter {
   fn is_truthy(&self, rlox_type: RloxType) -> Result<RloxType, Error> {
     match rlox_type {
       RloxType::NullType => Ok(RloxType::BooleanType(false)),
-      RloxType::BooleanType(b) => Ok(RloxType::BooleanType(!b)),
+      RloxType::BooleanType(b) => Ok(RloxType::BooleanType(b)),
       _ => Ok(RloxType::BooleanType(true)),
     }
   }
@@ -125,6 +125,16 @@ impl super::stmt::Visitor<RloxType> for Interpreter {
 
   fn visit_expression_stmt(&self, stmt: &Expression<RloxType>) -> Result<RloxType, Error> {
     Ok(self.evaluate_expr(stmt.expression.clone())?)
+  }
+
+  fn visit_if_stmt(&self, stmt: &If<RloxType>) -> Result<RloxType, Error> {
+    if self.is_truthy(self.evaluate_expr(stmt.condition.clone())?)? == Literal::BooleanType(true) {
+      self.evaluate_stmt(stmt.then_branch.clone())?;
+    } else if let Some(eb) = stmt.else_branch.clone() {
+      self.evaluate_stmt(eb)?;
+    }
+
+    Ok(RloxType::NullType)
   }
 
   fn visit_print_stmt(&self, stmt: &Print<RloxType>) -> Result<RloxType, Error> {
