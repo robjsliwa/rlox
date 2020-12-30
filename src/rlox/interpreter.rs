@@ -118,6 +118,14 @@ impl Interpreter {
 }
 
 impl super::stmt::Visitor<RloxType> for Interpreter {
+  fn visit_while_stmt(&self, stmt: &While<RloxType>) -> Result<RloxType, Error> {
+    while self.is_truthy(self.evaluate_expr(stmt.condition.clone())?)? == Literal::BooleanType(true) {
+      self.evaluate_stmt(stmt.body.clone())?;
+    }
+
+    Ok(RloxType::NullType)
+  }
+
   fn visit_block_stmt(&self, stmt: &Block<RloxType>) -> Result<RloxType, Error> {
     let env = Environment::new_with_parent(self.environment.borrow().clone());
     Ok(self.execute_block(stmt.statements.clone(), env)?)
@@ -355,6 +363,36 @@ mod tests {
     for (&input, &expected_result) in test_input2.iter() {
       let val = run(input)?;
       assert_eq!(val.to_string(), RloxType::StringType(expected_result.to_string()).to_string());
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_while_loop() -> Result<(), Error> {
+    let test_input: HashMap<&str, f64> = [
+      ("var p=0; while(p<5) { print p; p=p+1; } p;", 5.0),
+      ("var l=0; var i=0; while(i+l < 10) { print i; print l; i=i+1; l=l+2; } i;", 4.0),
+      ("var l=0; var i=0; while(i+l < 10) { print i; print l; i=i+1; l=l+2; } l;", 8.0),
+    ].iter().cloned().collect();
+
+    for (&input, &expected_result) in test_input.iter() {
+      let val = run(input)?;
+      assert_eq!(val.to_string(), RloxType::NumberType(expected_result).to_string());
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_for_loop() -> Result<(), Error> {
+    let test_input: HashMap<&str, f64> = [
+      ("var a = 0; var temp; for (var b = 1; a < 10000; b = temp + b) { print a; temp = a; a = b; } a;", 10946.0),
+    ].iter().cloned().collect();
+
+    for (&input, &expected_result) in test_input.iter() {
+      let val = run(input)?;
+      assert_eq!(val.to_string(), RloxType::NumberType(expected_result).to_string());
     }
 
     Ok(())
