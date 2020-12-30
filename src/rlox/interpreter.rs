@@ -47,7 +47,7 @@ impl Interpreter {
   fn is_truthy(&self, rlox_type: RloxType) -> Result<RloxType, Error> {
     match rlox_type {
       RloxType::NullType => Ok(RloxType::BooleanType(false)),
-      RloxType::BooleanType(b) => Ok(RloxType::BooleanType(!b)),
+      RloxType::BooleanType(b) => Ok(RloxType::BooleanType(b)),
       _ => Ok(RloxType::BooleanType(true)),
     }
   }
@@ -125,6 +125,16 @@ impl super::stmt::Visitor<RloxType> for Interpreter {
 
   fn visit_expression_stmt(&self, stmt: &Expression<RloxType>) -> Result<RloxType, Error> {
     Ok(self.evaluate_expr(stmt.expression.clone())?)
+  }
+
+  fn visit_if_stmt(&self, stmt: &If<RloxType>) -> Result<RloxType, Error> {
+    if self.is_truthy(self.evaluate_expr(stmt.condition.clone())?)? == Literal::BooleanType(true) {
+      self.evaluate_stmt(stmt.then_branch.clone())?;
+    } else if let Some(eb) = stmt.else_branch.clone() {
+      self.evaluate_stmt(eb)?;
+    }
+
+    Ok(RloxType::NullType)
   }
 
   fn visit_print_stmt(&self, stmt: &Print<RloxType>) -> Result<RloxType, Error> {
@@ -282,6 +292,21 @@ mod tests {
       ("var t=5; t; {var p=10; t=p;} t;", 10.0),
       ("var k=1; {var k=10; k=k+1;} k;", 1.0),
       ("var s=5; {var d=10; d=d+5; s=s+d;} s;", 20.0),
+    ].iter().cloned().collect();
+
+    for (&input, &expected_result) in test_input.iter() {
+      let val = run(input)?;
+      assert_eq!(val.to_string(), RloxType::NumberType(expected_result).to_string());
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_if_statements() -> Result<(), Error> {
+    let test_input: HashMap<&str, f64> = [
+      ("var t=3; var p=1; if (t>p) { t=t+1; t=t*2; } else { p=p+9; p=p/2; } t;", 8.0),
+      ("var t=3; var p=1; if (t<p) { t=t+1; t=t*2; } else { p=p+9; p=p/2; } p;", 5.0),
     ].iter().cloned().collect();
 
     for (&input, &expected_result) in test_input.iter() {
