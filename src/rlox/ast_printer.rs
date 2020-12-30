@@ -85,6 +85,10 @@ impl Visitor<String> for AstPrinter {
     // TODO: fix this
     Err(format_err!("Not implemented"))
   }
+
+  fn visit_logical_expr(&self, _: &Logical<String>) -> Result<String, Error> {
+    Err(format_err!("Not implemented"))
+  }
 }
 
 #[cfg(test)]

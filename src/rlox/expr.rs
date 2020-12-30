@@ -5,6 +5,11 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use crate::generate_ast;
 
+// expression     → assignment ;
+// assignment     → IDENTIFIER "=" assignment
+//                | logic_or ;
+// logic_or       → logic_and ( "or" logic_and )* ;
+// logic_and      → equality ( "and" equality )* ;
 // expression     → equality ;
 // equality       → comparison ( ( "!=" | "==" ) comparison )* ;
 // comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
@@ -23,6 +28,7 @@ generate_ast! {
     visit_binary_expr Binary T => left: Exp<T>, operator: Token, right: Exp<T>;
     visit_grouping_expr Grouping T => expression: Exp<T>;
     visit_literal_expr LiteralObj => value: Option<Literal>;
+    visit_logical_expr Logical T => left: Exp<T>, operator: Token, right: Exp<T>;
     visit_unary_expr Unary T => operator: Token, right: Exp<T>;
     visit_variable_expr Variable => name: Token;
   }

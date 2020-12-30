@@ -195,6 +195,22 @@ impl super::expr::Visitor<RloxType> for Interpreter {
     self.environment.borrow().assign(&expr.name.lexeme, value.clone())?;
     Ok(value)
   }
+
+  fn visit_logical_expr(&self, expr: &Logical<RloxType>) -> Result<RloxType, Error> {
+    let left = self.evaluate_expr(expr.left.clone())?;
+
+    if expr.operator.token_type == TokenType::OR {
+      if self.is_truthy(left.clone())? == Literal::BooleanType(true) {
+        return Ok(left.clone());
+      } 
+    } else {
+      if self.is_truthy(left.clone())? == Literal::BooleanType(false) {
+        return Ok(left.clone())
+      }
+    }
+
+    Ok(self.evaluate_expr(expr.right.clone())?)
+  }
 }
 
 #[cfg(test)]
@@ -312,6 +328,33 @@ mod tests {
     for (&input, &expected_result) in test_input.iter() {
       let val = run(input)?;
       assert_eq!(val.to_string(), RloxType::NumberType(expected_result).to_string());
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_logical_operators() -> Result<(), Error> {
+    let test_input: HashMap<&str, f64> = [
+      ("var t=3; var p=1; if (t>1 and p<10) { t=t+1; t=t*2; } else { p=p+9; p=p/2; } t;", 8.0),
+      ("var t=3; var p=1; if (t<1 and p<10) { t=t+1; t=t*2; } else { p=p+9; p=p/2; } p;", 5.0),
+      ("var t=3; var p=1; if (t<1 or p<10) { t=t+1; t=t*2; } else { p=p+9; p=p/2; } t;", 8.0),
+      ("var t=3; var p=1; if (t<1 or p>10) { t=t+1; t=t*2; } else { p=p+9; p=p/2; } p;", 5.0),
+    ].iter().cloned().collect();
+
+    for (&input, &expected_result) in test_input.iter() {
+      let val = run(input)?;
+      assert_eq!(val.to_string(), RloxType::NumberType(expected_result).to_string());
+    }
+
+    let test_input2: HashMap<&str, &str> = [
+      ("\"hi\" or 2;", "hi"),
+      ("nil or \"yes\";", "yes"),
+    ].iter().cloned().collect();
+
+    for (&input, &expected_result) in test_input2.iter() {
+      let val = run(input)?;
+      assert_eq!(val.to_string(), RloxType::StringType(expected_result.to_string()).to_string());
     }
 
     Ok(())
