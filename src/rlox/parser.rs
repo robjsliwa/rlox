@@ -241,6 +241,10 @@ impl Parser {
   }
 
   fn statement<T: 'static>(&self) -> ParserStmtResult<T> {
+    if self.token_match(vec![TokenType::FOR]) {
+      return self.for_statement();
+    }
+
     if self.token_match(vec![TokenType::IF]) {
       return self.if_statement();
     }
@@ -258,6 +262,48 @@ impl Parser {
     }
 
     self.expression_statement()
+  }
+
+  fn for_statement<T: 'static>(&self) -> ParserStmtResult<T> {
+    self.consume(TokenType::LEFTPAREN, "Expect '(' after 'for'.")?;
+
+    let mut initializer: Option<Stm<T>> = None;
+    if self.token_match(vec![TokenType::SEMICOLON]) {
+      initializer = None;
+    } else if self.token_match(vec![TokenType::VAR]) {
+      initializer = Some(self.var_declaration()?);
+    } else {
+      initializer = Some(self.expression_statement()?);
+    }
+
+    let mut condition: Option<Exp<T>> = None;
+    if !self.check(TokenType::SEMICOLON) {
+      condition = Some(self.expression()?);
+    }
+    self.consume(TokenType::SEMICOLON, "Expect ';' after loop condition.")?;
+
+    let mut increment: Option<Exp<T>> = None;
+    if !self.check(TokenType::RIGHTPAREN) {
+      increment = Some(self.expression()?);
+    }
+    self.consume(TokenType::RIGHTPAREN, "Expect ')' after for clauses.")?;
+
+    let mut body = self.statement()?;
+
+    if let Some(increment) = increment {
+      body = Rc::new(RefCell::new(Block::new(vec![body, Rc::new(RefCell::new(Expression::new(increment)))])));
+    }
+
+    if let None = condition {
+      condition = Some(Rc::new(RefCell::new(LiteralObj::new(Some(Literal::BooleanType(true))))));
+    }
+    body = Rc::new(RefCell::new(While::new(condition.unwrap(), body)));
+
+    if let Some(initializer) = initializer {
+      body = Rc::new(RefCell::new(Block::new(vec![initializer, body])));
+    }
+    
+    Ok(body)
   }
 
   fn if_statement<T: 'static>(&self) -> ParserStmtResult<T> {

@@ -383,4 +383,18 @@ mod tests {
 
     Ok(())
   }
+
+  #[test]
+  fn test_for_loop() -> Result<(), Error> {
+    let test_input: HashMap<&str, f64> = [
+      ("var a = 0; var temp; for (var b = 1; a < 10000; b = temp + b) { print a; temp = a; a = b; } a;", 10946.0),
+    ].iter().cloned().collect();
+
+    for (&input, &expected_result) in test_input.iter() {
+      let val = run(input)?;
+      assert_eq!(val.to_string(), RloxType::NumberType(expected_result).to_string());
+    }
+
+    Ok(())
+  }
 }

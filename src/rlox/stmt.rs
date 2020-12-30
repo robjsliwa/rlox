@@ -10,11 +10,15 @@ pub type Stm<T> = Rc<RefCell<dyn Stmt<T>>>;
 // program        → statement* EOF ;
 
 // statement      → exprStmt
+//                | forStmt
 //                | ifStmt
 //                | printStmt
 //                | whileStmt
 //                | block ;
 
+// forStmt        → "for" "(" ( varDecl | exprStmt | ";" )
+//                  expression? ";"
+//                  expression? ")" statement ;
 // whileStmt      → "while" "(" expression ")" statement ;
 // ifStmt         → "if" "(" expression ")" statement
 //                ( "else" statement )? ;
