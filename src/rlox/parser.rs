@@ -249,6 +249,10 @@ impl Parser {
       return self.print_statement();
     }
 
+    if self.token_match(vec![TokenType::WHILE]) {
+      return self.while_statement();
+    }
+
     if self.token_match(vec![TokenType::LEFTBRACE]) {
       return Ok(Rc::new(RefCell::new(Block::new(self.block()?))))
     }
@@ -268,6 +272,15 @@ impl Parser {
     }
 
     Ok(Rc::new(RefCell::new(If::new(condition, then_branch, else_branch))))
+  }
+
+  fn while_statement<T: 'static>(&self) -> ParserStmtResult<T> {
+    self.consume(TokenType::LEFTPAREN, "Expect '(' after 'while'.")?;
+    let condition = self.expression()?;
+    self.consume(TokenType::RIGHTPAREN, "Expect ')' after condition.")?;
+    let body = self.statement()?;
+
+    Ok(Rc::new(RefCell::new(While::new(condition, body))))
   }
 
   fn block<T: 'static>(&self) -> ParserVecStmtResult<T> {

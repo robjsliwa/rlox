@@ -10,9 +10,12 @@ pub type Stm<T> = Rc<RefCell<dyn Stmt<T>>>;
 // program        → statement* EOF ;
 
 // statement      → exprStmt
+//                | ifStmt
 //                | printStmt
+//                | whileStmt
 //                | block ;
-//
+
+// whileStmt      → "while" "(" expression ")" statement ;
 // ifStmt         → "if" "(" expression ")" statement
 //                ( "else" statement )? ;
 // block          → "{" declaration* "}" ;
@@ -26,5 +29,6 @@ generate_ast! {
     visit_if_stmt If T => condition: Exp<T>, then_branch: Stm<T>, else_branch: Option<Stm<T>>;
     visit_print_stmt Print T => expression: Exp<T>;
     visit_var_stmt Var T => name: Token, initializer: Exp<T>;
+    visit_while_stmt While T => condition: Exp<T>, body: Stm<T>;
   }
 }
