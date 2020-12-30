@@ -301,4 +301,19 @@ mod tests {
 
     Ok(())
   }
+
+  #[test]
+  fn test_if_statements() -> Result<(), Error> {
+    let test_input: HashMap<&str, f64> = [
+      ("var t=3; var p=1; if (t>p) { t=t+1; t=t*2; } else { p=p+9; p=p/2; } t;", 8.0),
+      ("var t=3; var p=1; if (t<p) { t=t+1; t=t*2; } else { p=p+9; p=p/2; } p;", 5.0),
+    ].iter().cloned().collect();
+
+    for (&input, &expected_result) in test_input.iter() {
+      let val = run(input)?;
+      assert_eq!(val.to_string(), RloxType::NumberType(expected_result).to_string());
+    }
+
+    Ok(())
+  }
 }
