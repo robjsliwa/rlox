@@ -195,7 +195,7 @@ impl Parser {
           return Err(format_err!("Can't have more than 255 arguments."));
         }
         arguments.push(self.expression()?);
-        if self.token_match(vec![TokenType::COMMA]) {
+        if !self.token_match(vec![TokenType::COMMA]) {
           break;
         }
       }
@@ -388,6 +388,10 @@ impl Parser {
   }
 
   fn declaration_impl<T: 'static>(&self) -> ParserStmtResult<T> {
+    if self.token_match(vec![TokenType::FUN]) {
+      return Ok(self.function("function")?);
+    }
+
     if self.token_match(vec![TokenType::VAR]) {
       return Ok(self.var_declaration()?);
     }
@@ -403,6 +407,33 @@ impl Parser {
         Err(e)
       }
     }
+  }
+
+  fn function<T: 'static>(&self, kind: &str) -> ParserStmtResult<T> {
+    let name = self.consume(TokenType::IDENTIFIER, &format!("Expect {} name.", kind))?;
+    self.consume(TokenType::LEFTPAREN, &format!("Expect '(' after {} name.", kind))?;
+
+    let mut parameters: Vec<Token> = Vec::new();
+
+    if !self.check(TokenType::RIGHTPAREN) {
+      loop {
+        if parameters.len() >= 255 {
+          return Err(format_err!("Can't have more than 255 parameters."))
+        }
+
+        parameters.push(self.consume(TokenType::IDENTIFIER, "Expect parameter name.")?);
+
+        if !self.token_match(vec![TokenType::COMMA]) {
+          break;
+        }
+      }
+    }
+
+    self.consume(TokenType::RIGHTPAREN, "Expect ')' after parameters.")?;
+
+    self.consume(TokenType::LEFTBRACE, &format!("Expect '{{' before {} body.", kind))?;
+    let body = self.block()?;
+    Ok(Rc::new(RefCell::new(Function::new(name, parameters, body))))
   }
 
   fn var_declaration<T: 'static>(&self) -> ParserStmtResult<T> {

@@ -5,6 +5,7 @@ use super::{
   token_type::*,
   literal::*,
   environment::*,
+  rlox_function::RloxFunction,
 };
 use failure::{format_err, Error};
 use std::{
@@ -18,7 +19,7 @@ type Stm = Rc<RefCell<dyn Stmt<RloxType>>>;
 #[derive(Clone)]
 pub struct Interpreter {
   environment: Rc<RefCell<Environment>>,
-  globals: Rc<RefCell<Environment>>,
+  pub globals: Rc<RefCell<Environment>>,
 }
 
 impl Interpreter {
@@ -105,7 +106,7 @@ impl Interpreter {
     return Err(format_err!("unsupported operand type(s) for {}: both operand types must be number", token_type.name()));
   }
 
-  fn execute_block(&self, statements: Vec<Stm>, environment: Environment)-> Result<RloxType, Error> {
+  pub fn execute_block(&self, statements: Vec<Stm>, environment: Environment)-> Result<RloxType, Error> {
     let previous = self.environment.replace(environment);
 
     for statement in statements {
@@ -158,6 +159,13 @@ impl super::stmt::Visitor<RloxType> for Interpreter {
     let value = self.evaluate_expr(stmt.initializer.clone())?;
 
     self.environment.borrow().define(stmt.name.lexeme.clone(), value);
+
+    Ok(RloxType::NullType)
+  }
+
+  fn visit_function_stmt(&self, stmt: &Function<RloxType>) -> Result<RloxType, Error> {
+    let function = RloxFunction::new(stmt);
+    self.environment.borrow().define(stmt.name.lexeme.clone(), RloxType::CallableType(Box::new(function)));
 
     Ok(RloxType::NullType)
   }

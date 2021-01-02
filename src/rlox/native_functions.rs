@@ -25,6 +25,6 @@ impl Callable for Clock {
   }
 
   fn name(&self) -> String {
-    String::from("<native function> clock")
+    String::from("<native clock function>")
   }
 }

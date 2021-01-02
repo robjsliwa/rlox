@@ -1,10 +1,10 @@
 use super::interpreter::{ Interpreter };
-use super::literal::Literal;
+use super::rlox_type::RloxType;
 use failure::Error;
 
 pub trait Callable: CallableClone {
   fn arity(&self) -> usize;
-  fn call(&self, interpreter: &Interpreter, arguments: Vec<Literal>) -> Result<Literal, Error>;
+  fn call(&self, interpreter: &Interpreter, arguments: Vec<RloxType>) -> Result<RloxType, Error>;
   fn name(&self) -> String;
 }
 
