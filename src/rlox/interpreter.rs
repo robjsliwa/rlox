@@ -171,7 +171,9 @@ impl super::stmt::Visitor<RloxType> for Interpreter {
   }
 
   fn visit_return_stmt(&self, stmt: &Return<RloxType>) -> Result<RloxType, RloxError> {
-    Err(RloxError::InterpreterError("Not implemented!".to_string()))
+    let value = self.evaluate_expr(stmt.value.clone())?;
+
+    Err(RloxError::ReturnValue(value))
   }
 }
 
@@ -420,6 +422,20 @@ mod tests {
 
   #[test]
   fn test_for_loop() -> Result<(), RloxError> {
+    let test_input: HashMap<&str, f64> = [
+      ("fun fib(n) { if (n <= 1) return n; return fib(n - 2) + fib(n - 1); } var r = 0; for (var i = 0; i < 20; i = i + 1) { r = fib(i); } r;", 4181.0),
+    ].iter().cloned().collect();
+
+    for (&input, &expected_result) in test_input.iter() {
+      let val = run(input)?;
+      assert_eq!(val.to_string(), RloxType::NumberType(expected_result).to_string());
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_functions() -> Result<(), RloxError> {
     let test_input: HashMap<&str, f64> = [
       ("var a = 0; var temp; for (var b = 1; a < 10000; b = temp + b) { print a; temp = a; a = b; } a;", 10946.0),
     ].iter().cloned().collect();

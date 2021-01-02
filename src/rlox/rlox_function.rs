@@ -30,7 +30,15 @@ impl Callable for RloxFunction {
       env.define(param.lexeme.clone(), arguments.get(i).unwrap().clone());
     }
 
-    interpreter.execute_block(self.declaration.body.clone(), env)
+    match interpreter.execute_block(self.declaration.body.clone(), env) {
+      Ok(r) => Ok(r),
+      Err(e) => {
+        match e {
+          RloxError::ReturnValue(v) => Ok(v),
+          _ => Err(e),
+        }
+      }
+    }
   }
 
   fn arity(&self) -> usize {

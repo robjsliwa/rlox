@@ -31,7 +31,13 @@ fn repl_printer(result: Result<RloxType, RloxError>) {
                 println!("{}", r);
             }
         }
-        Err(e) => eprintln!("{}", e),
+        Err(e) => {
+            match e {
+                RloxError::InterpreterError(i) => eprintln!("{}", i),
+                RloxError::ParserError(p) => eprintln!("{}", p),
+                _ => eprintln!("Unknown error."),
+            }
+        }
     }
 }
 
