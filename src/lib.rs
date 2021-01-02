@@ -49,7 +49,13 @@ fn run(interpreter: &Interpreter, data: Vec<char>) -> Result<(), RloxError> {
 
     match statements {
         Ok(stmt) => interpreter.interpret(stmt, Some(repl_printer)),
-        Err(e) => eprintln!("Error: {}", e),
+        Err(e) => {
+            match e {
+                RloxError::InterpreterError(i) => eprintln!("{}", i),
+                RloxError::ParserError(p) => eprintln!("{}", p),
+                _ => eprintln!("Unknown error."),
+            }
+        }
     }
 
     Ok(())
