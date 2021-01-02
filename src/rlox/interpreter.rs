@@ -18,12 +18,15 @@ type Stm = Rc<RefCell<dyn Stmt<RloxType>>>;
 #[derive(Clone)]
 pub struct Interpreter {
   environment: Rc<RefCell<Environment>>,
+  globals: Rc<RefCell<Environment>>,
 }
 
 impl Interpreter {
   pub fn new() -> Interpreter {
+    let env_init = Rc::new(RefCell::new(Environment::new()));
     Interpreter {
-      environment: Rc::new(RefCell::new(Environment::new())),
+      environment: env_init.clone(),
+      globals: env_init.clone(),
     }
   }
 

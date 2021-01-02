@@ -12,6 +12,7 @@ mod generate_ast;
 mod stmt;
 mod environment;
 mod callable;
+mod native_functions;
 
 pub use self::ast_printer::*;
 pub use self::error_handler::*;
