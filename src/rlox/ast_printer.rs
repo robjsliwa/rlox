@@ -1,5 +1,5 @@
 use super::expr::*;
-use failure::{format_err, Error};
+use super::rlox_errors::RloxError;
 use std::cell::RefCell;
 use std::rc::Rc;
 
@@ -7,7 +7,7 @@ use std::rc::Rc;
 pub struct AstPrinter {}
 
 impl AstPrinter {
-  pub fn print(self, expr: Rc<RefCell<dyn Expr<String>>>) -> Result<String, Error> {
+  pub fn print(self, expr: Rc<RefCell<dyn Expr<String>>>) -> Result<String, RloxError> {
     expr.borrow().accept(Rc::new(RefCell::new(self)))
   }
 
@@ -15,7 +15,7 @@ impl AstPrinter {
     &self,
     name: &str,
     expr: Rc<RefCell<dyn Expr<String>>>,
-  ) -> Result<String, Error> {
+  ) -> Result<String, RloxError> {
     let mut text = String::from("(");
     text.push_str(name);
 
@@ -32,7 +32,7 @@ impl AstPrinter {
     name: &str,
     expr_left: Rc<RefCell<dyn Expr<String>>>,
     expr_right: Rc<RefCell<dyn Expr<String>>>,
-  ) -> Result<String, Error> {
+  ) -> Result<String, RloxError> {
     let mut text = String::from("(");
     text.push_str(name);
 
@@ -57,41 +57,41 @@ impl AstPrinter {
 }
 
 impl Visitor<String> for AstPrinter {
-  fn visit_binary_expr(&self, expr: &Binary<String>) -> Result<String, Error> {
+  fn visit_binary_expr(&self, expr: &Binary<String>) -> Result<String, RloxError> {
     self.parenthesize_expr_pair(&expr.operator.lexeme, expr.left.clone(), expr.right.clone())
   }
 
-  fn visit_grouping_expr(&self, expr: &Grouping<String>) -> Result<String, Error> {
+  fn visit_grouping_expr(&self, expr: &Grouping<String>) -> Result<String, RloxError> {
     self.parenthesize_expr("group", expr.expression.clone())
   }
 
-  fn visit_literal_expr(&self, expr: &LiteralObj) -> Result<String, Error> {
+  fn visit_literal_expr(&self, expr: &LiteralObj) -> Result<String, RloxError> {
     match &expr.value {
       Some(v) => Ok(v.to_string()),
-      None => Err(format_err!("missing value")),
+      None => Err(RloxError::ParserError("missing value".to_string())),
     }
   }
 
-  fn visit_unary_expr(&self, expr: &Unary<String>) -> Result<String, Error> {
+  fn visit_unary_expr(&self, expr: &Unary<String>) -> Result<String, RloxError> {
     self.parenthesize_expr(&expr.operator.lexeme, expr.right.clone())
   }
 
-  fn visit_variable_expr(&self, _: &Variable) -> Result<String, Error> {
+  fn visit_variable_expr(&self, _: &Variable) -> Result<String, RloxError> {
     // TODO: fix this
-    Err(format_err!("Not implemented"))
+    Err(RloxError::ParserError("Not implemented".to_string()))
   }
 
-  fn visit_assign_expr(&self, _: &Assign<String>) -> Result<String, Error> {
+  fn visit_assign_expr(&self, _: &Assign<String>) -> Result<String, RloxError> {
     // TODO: fix this
-    Err(format_err!("Not implemented"))
+    Err(RloxError::ParserError("Not implemented".to_string()))
   }
 
-  fn visit_logical_expr(&self, _: &Logical<String>) -> Result<String, Error> {
-    Err(format_err!("Not implemented"))
+  fn visit_logical_expr(&self, _: &Logical<String>) -> Result<String, RloxError> {
+    Err(RloxError::ParserError("Not implemented".to_string()))
   }
 
-  fn visit_call_expr(&self, _: &Call<String>) -> Result<String, Error> {
-    Err(format_err!("Not implemented"))
+  fn visit_call_expr(&self, _: &Call<String>) -> Result<String, RloxError> {
+    Err(RloxError::ParserError("Not implemented".to_string()))
   }
 }
 
@@ -101,7 +101,7 @@ mod tests {
   use crate::rlox::*;
 
   #[test]
-  fn print_simple_ast() -> Result<(), Error> {
+  fn print_simple_ast() -> Result<(), RloxError> {
     let expression = Rc::new(RefCell::new(Binary::new(
       Rc::new(RefCell::new(Unary::new(
         Token::new(TokenType::MINUS, String::from("-"), None, 1),

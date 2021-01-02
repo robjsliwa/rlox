@@ -2,8 +2,8 @@ use super::{
   callable::Callable,
   interpreter::Interpreter,
   rlox_type::RloxType,
+  rlox_errors::RloxError,
 };
-use failure::Error;
 use chrono;
 
 #[derive(Clone)]
@@ -20,7 +20,7 @@ impl Callable for Clock {
     0
   }
 
-  fn call(&self, _interpreter: &Interpreter, _arguments: Vec<RloxType>) -> Result<RloxType, Error> {
+  fn call(&self, _interpreter: &Interpreter, _arguments: Vec<RloxType>) -> Result<RloxType, RloxError> {
     Ok(RloxType::NumberType(chrono::offset::Utc::now().timestamp() as f64))
   }
 

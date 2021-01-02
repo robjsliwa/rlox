@@ -14,6 +14,7 @@ mod environment;
 mod callable;
 mod native_functions;
 mod rlox_function;
+mod rlox_errors;
 
 pub use self::ast_printer::*;
 pub use self::error_handler::*;
@@ -25,3 +26,4 @@ pub use self::rlox_type::*;
 pub use self::token::*;
 pub use self::token_type::*;
 pub use self::stmt::*;
+pub use self::rlox_errors::RloxError;

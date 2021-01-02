@@ -1,11 +1,11 @@
 use std::rc::Rc;
-use failure::Error;
 use super::{
   stmt::*,
   interpreter::Interpreter,
   callable::Callable,
   rlox_type::RloxType,
   environment::Environment,
+  rlox_errors::RloxError,
 };
 
 #[derive(Clone)]
@@ -23,7 +23,7 @@ impl RloxFunction {
 }
 
 impl Callable for RloxFunction {
-  fn call(&self, interpreter: &Interpreter, arguments: Vec<RloxType>) -> Result<RloxType, Error> {
+  fn call(&self, interpreter: &Interpreter, arguments: Vec<RloxType>) -> Result<RloxType, RloxError> {
     let env = Environment::new_with_parent(interpreter.globals.borrow().clone());
     
     for (i, param) in self.declaration.params.iter().enumerate() {

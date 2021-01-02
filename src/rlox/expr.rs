@@ -1,6 +1,7 @@
-use super::literal::*;
-use super::token::*;
-use failure::Error;
+use super::{
+  literal::*,
+  token::*,
+};
 use std::cell::RefCell;
 use std::rc::Rc;
 use crate::generate_ast;

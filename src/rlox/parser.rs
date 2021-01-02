@@ -1,17 +1,19 @@
-use super::expr::*;
-use super::stmt::*;
-use super::literal::*;
-use super::token::*;
-use super::token_type::*;
-use failure::{format_err, Error};
+use super::{
+  expr::*,
+  stmt::*,
+  literal::*,
+  token::*,
+  token_type::*,
+  rlox_errors::RloxError,
+};
 use std::cell::{Cell, RefCell};
 use std::rc::Rc;
 
 pub type ParserExpr<T> = Rc<RefCell<dyn Expr<T>>>;
-pub type ParserExprResult<T> = Result<ParserExpr<T>, Error>;
+pub type ParserExprResult<T> = Result<ParserExpr<T>, RloxError>;
 pub type ParserStmt<T> = Rc<RefCell<dyn Stmt<T>>>;
-pub type ParserStmtResult<T> = Result<ParserStmt<T>, Error>;
-pub type ParserVecStmtResult<T> = Result<Vec<ParserStmt<T>>, Error>;
+pub type ParserStmtResult<T> = Result<ParserStmt<T>, RloxError>;
+pub type ParserVecStmtResult<T> = Result<Vec<ParserStmt<T>>, RloxError>;
 
 pub struct Parser {
   tokens: Vec<Token>,
@@ -42,7 +44,7 @@ impl Parser {
         return Ok(Rc::new(RefCell::new(Assign::new(name, value))));
       }
 
-      return Err(format_err!("{} Invalid assignment target.", equals.lexeme))
+      return Err(RloxError::ParserError(format!("{} Invalid assignment target.", equals.lexeme)))
     }
 
     Ok(expr)
@@ -192,7 +194,7 @@ impl Parser {
     if !self.check(TokenType::RIGHTPAREN) {
       loop {
         if arguments.len() >= 255 {
-          return Err(format_err!("Can't have more than 255 arguments."));
+          return Err(RloxError::ParserError("Can't have more than 255 arguments.".to_string()));
         }
         arguments.push(self.expression()?);
         if !self.token_match(vec![TokenType::COMMA]) {
@@ -241,15 +243,15 @@ impl Parser {
       return Ok(Rc::new(RefCell::new(Grouping::new(expr))));
     }
 
-    Err(format_err!("Expect expression."))
+    Err(RloxError::ParserError("Expect expression.".to_string()))
   }
 
-  fn consume(&self, token_type: TokenType, message: &str) -> Result<Token, Error> {
+  fn consume(&self, token_type: TokenType, message: &str) -> Result<Token, RloxError> {
     if self.check(token_type) {
       return Ok(self.advance());
     }
 
-    Err(format_err!("{}", message))
+    Err(RloxError::ParserError(format!("{}", message)))
   }
 
   fn synchronize(&self) {
@@ -287,6 +289,10 @@ impl Parser {
       return self.print_statement();
     }
 
+    if self.token_match(vec![TokenType::RETURN]) {
+      return self.return_statement();
+    }
+
     if self.token_match(vec![TokenType::WHILE]) {
       return self.while_statement();
     }
@@ -296,6 +302,20 @@ impl Parser {
     }
 
     self.expression_statement()
+  }
+
+  fn return_statement<T: 'static>(&self) -> ParserStmtResult<T> {
+    let keyword = self.previous();
+
+    let mut value: Rc<RefCell<dyn Expr<T>>> = Rc::new(RefCell::new(LiteralObj::new(Some(Literal::NullType))));
+    
+    if !self.check(TokenType::SEMICOLON) {
+      value = self.expression()?;
+    }
+
+    self.consume(TokenType::SEMICOLON, "Expect ';' after return value.")?;
+
+    Ok(Rc::new(RefCell::new(Return::new(keyword, value))))
   }
 
   fn for_statement<T: 'static>(&self) -> ParserStmtResult<T> {
@@ -418,7 +438,7 @@ impl Parser {
     if !self.check(TokenType::RIGHTPAREN) {
       loop {
         if parameters.len() >= 255 {
-          return Err(format_err!("Can't have more than 255 parameters."))
+          return Err(RloxError::ParserError("Can't have more than 255 parameters.".to_string()))
         }
 
         parameters.push(self.consume(TokenType::IDENTIFIER, "Expect parameter name.")?);
@@ -448,7 +468,7 @@ impl Parser {
     Ok(Rc::new(RefCell::new(Var::new(name, initializer))))
   }
 
-  pub fn parse<T: 'static>(&self) -> Result<Vec<ParserStmt<T>>, Error> {
+  pub fn parse<T: 'static>(&self) -> Result<Vec<ParserStmt<T>>, RloxError> {
     let mut statements = Vec::new();
     while !self.is_at_end() {
       statements.push(self.declaration()?);

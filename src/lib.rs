@@ -4,16 +4,15 @@ mod scanners;
 use rlox::*;
 use scanners::Scanner;
 
-use failure::Error;
 use std::io::{stdin, stdout, Write};
 
-pub fn run_file(filename: &str) -> Result<(), Error> {
+pub fn run_file(filename: &str) -> Result<(), RloxError> {
     let interpreter = Interpreter::new();
     let data = scanners::read_source_code(filename)?;
     run(&interpreter, data)
 }
 
-pub fn run_repl() -> Result<(), Error> {
+pub fn run_repl() -> Result<(), RloxError> {
     let interpreter = Interpreter::new();
 
     loop {
@@ -25,7 +24,7 @@ pub fn run_repl() -> Result<(), Error> {
     }
 }
 
-fn repl_printer(result: Result<RloxType, Error>) {
+fn repl_printer(result: Result<RloxType, RloxError>) {
     match result {
         Ok(r) => {
             if r != RloxType::NullType {
@@ -36,7 +35,7 @@ fn repl_printer(result: Result<RloxType, Error>) {
     }
 }
 
-fn run(interpreter: &Interpreter, data: Vec<char>) -> Result<(), Error> {
+fn run(interpreter: &Interpreter, data: Vec<char>) -> Result<(), RloxError> {
     let mut scanner = Scanner::new(data);
     let tokens = scanner.scan_tokens();
     let parser = Parser::new(tokens);
