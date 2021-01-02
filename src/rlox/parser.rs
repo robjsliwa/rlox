@@ -169,7 +169,41 @@ impl Parser {
       return Ok(Rc::new(RefCell::new(Unary::new(operator.clone(), right))));
     }
 
-    self.primary()
+    self.call()
+  }
+
+  fn call<T: 'static>(&self) -> ParserExprResult<T> {
+    let mut expr = self.primary()?;
+
+    loop {
+      if self.token_match(vec![TokenType::LEFTPAREN]) {
+        expr = self.finish_call(expr)?;
+      } else {
+        break;
+      }
+    }
+
+    return Ok(expr)
+  }
+
+  fn finish_call<T: 'static>(&self, callee: Exp<T>) -> ParserExprResult<T> {
+    let mut arguments: Vec<Exp<T>> = Vec::new();
+
+    if !self.check(TokenType::RIGHTPAREN) {
+      loop {
+        if arguments.len() >= 255 {
+          return Err(format_err!("Can't have more than 255 arguments."));
+        }
+        arguments.push(self.expression()?);
+        if self.token_match(vec![TokenType::COMMA]) {
+          break;
+        }
+      }
+    }
+
+    let paren = self.consume(TokenType::RIGHTPAREN, "Expect ')' after arguments.")?;
+
+    Ok(Rc::new(RefCell::new(Call::new(callee, paren, arguments))))
   }
 
   fn primary<T: 'static>(&self) -> ParserExprResult<T> {

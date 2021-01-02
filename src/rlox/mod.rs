@@ -11,6 +11,7 @@ mod enum_to_str;
 mod generate_ast;
 mod stmt;
 mod environment;
+mod callable;
 
 pub use self::ast_printer::*;
 pub use self::error_handler::*;

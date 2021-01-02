@@ -15,8 +15,9 @@ use crate::generate_ast;
 // comparison     → term ( ( ">" | ">=" | "<" | "<=" ) term )* ;
 // term           → factor ( ( "-" | "+" ) factor )* ;
 // factor         → unary ( ( "/" | "*" ) unary )* ;
-// unary          → ( "!" | "-" ) unary
-//                | primary ;
+// unary          → ( "!" | "-" ) unary | call ;
+// call           → primary ( "(" arguments? ")" )* ;
+// arguments      → expression ( "," expression )* ;
 // primary        → NUMBER | STRING | "true" | "false" | "nil"
 //                | "(" expression ")" ;
 
@@ -26,6 +27,7 @@ generate_ast! {
   Expr {
     visit_assign_expr Assign T => name: Token, value: Exp<T>;
     visit_binary_expr Binary T => left: Exp<T>, operator: Token, right: Exp<T>;
+    visit_call_expr Call T => callee: Exp<T>, parent: Token, arguments: Vec<Exp<T>>;
     visit_grouping_expr Grouping T => expression: Exp<T>;
     visit_literal_expr LiteralObj => value: Option<Literal>;
     visit_logical_expr Logical T => left: Exp<T>, operator: Token, right: Exp<T>;

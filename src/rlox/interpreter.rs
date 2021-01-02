@@ -219,6 +219,25 @@ impl super::expr::Visitor<RloxType> for Interpreter {
 
     Ok(self.evaluate_expr(expr.right.clone())?)
   }
+
+  fn visit_call_expr(&self, expr: &Call<RloxType>) -> Result<RloxType, Error> {
+    let callee = self.evaluate_expr(expr.callee.clone())?;
+
+    let mut arguments = Vec::new();
+    for argument in expr.arguments.clone() {
+      arguments.push(self.evaluate_expr(argument)?);
+    }
+
+    match callee {
+      RloxType::CallableType(c) => {
+        if arguments.len() != c.arity() {
+          return Err(format_err!("Expected {} arguments but got {}.", c.arity(), arguments.len()))
+        }
+        Ok(c.call(self, arguments)?)
+      }
+      _ => Err(format_err!("Can only call functions and classes."))
+    }
+  }
 }
 
 #[cfg(test)]
