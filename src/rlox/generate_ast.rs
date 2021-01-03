@@ -1,10 +1,10 @@
 #[macro_export]
 macro_rules! parse_ast_visitor_entry {
   ($visitor_name:ident $t:ident $g:ident) => {
-    fn $visitor_name(&self, expr: &$t<$g>) -> Result<T, Error>;
+    fn $visitor_name(&self, expr: &$t<$g>) -> Result<T, super::rlox_errors::RloxError>;
   };
   ($visitor_name:ident $t:ident) => {
-    fn $visitor_name(&self, expr: &$t) -> Result<T, Error>;
+    fn $visitor_name(&self, expr: &$t) -> Result<T, super::rlox_errors::RloxError>;
   };
 }
   
@@ -14,7 +14,7 @@ macro_rules! generate_ast_visitor {
     $($visitor_name:ident $t:ident $($g:ident)?),*,
   }) => {
     pub trait $name<T> {
-      fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error>;
+      fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, super::rlox_errors::RloxError>;
       fn as_any(&self) -> &dyn std::any::Any;
     }
       
@@ -44,7 +44,7 @@ macro_rules! parse_grammar_entry {
     }
     
     impl<T> $root_name<T> for $name<$g> {
-      fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error> {
+      fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, super::rlox_errors::RloxError> {
         visitor.borrow().$visitor_name(self)
       }
 
@@ -71,7 +71,7 @@ macro_rules! parse_grammar_entry {
     }
     
     impl<T> $root_name<T> for $name {
-      fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error> {
+      fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, super::rlox_errors::RloxError> {
         visitor.borrow().$visitor_name(self)
       }
 

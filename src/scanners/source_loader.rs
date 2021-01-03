@@ -1,8 +1,8 @@
-use failure::Error;
 use std::fs::File;
 use std::io::Read;
+use crate::RloxError;
 
-pub fn read_source_code(filename: &str) -> Result<Vec<char>, Error> {
+pub fn read_source_code(filename: &str) -> Result<Vec<char>, RloxError> {
   let mut source_code = File::open(filename)?;
 
   let mut data = String::from("");
