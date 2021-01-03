@@ -1,4 +1,5 @@
 use std::rc::Rc;
+use std::cell::RefCell;
 use super::{
   stmt::*,
   interpreter::Interpreter,
@@ -11,20 +12,25 @@ use super::{
 #[derive(Clone)]
 pub struct RloxFunction {
   declaration: Rc<Function<RloxType>>,
+  closure: Rc<RefCell<Environment>>,
 }
 
 impl RloxFunction {
-  pub fn new(decl: &Function<RloxType>) -> RloxFunction {
+  pub fn new(decl: &Function<RloxType>, closure: &Environment) -> RloxFunction {
     let new_declaration = Function::new(decl.name.clone(), decl.params.clone(), decl.body.clone());
     RloxFunction {
       declaration: Rc::new(new_declaration),
+      // This is the environment that is active when
+      // the function is declared not when it’s called,
+      // which is what we want.
+      closure: Rc::new(RefCell::new(closure.clone())),
     }
   }
 }
 
 impl Callable for RloxFunction {
   fn call(&self, interpreter: &Interpreter, arguments: Vec<RloxType>) -> Result<RloxType, RloxError> {
-    let env = Environment::new_with_parent(interpreter.globals.borrow().clone());
+    let env = Environment::new_with_parent(self.closure.borrow().clone());
     
     for (i, param) in self.declaration.params.iter().enumerate() {
       env.define(param.lexeme.clone(), arguments.get(i).unwrap().clone());

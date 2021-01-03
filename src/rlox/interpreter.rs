@@ -164,8 +164,9 @@ impl super::stmt::Visitor<RloxType> for Interpreter {
   }
 
   fn visit_function_stmt(&self, stmt: &Function<RloxType>) -> Result<RloxType, RloxError> {
-    let function = RloxFunction::new(stmt);
-    self.environment.borrow().define(stmt.name.lexeme.clone(), RloxType::CallableType(Box::new(function)));
+    let env = self.environment.borrow();
+    let function = RloxFunction::new(stmt, &env);
+    env.define(stmt.name.lexeme.clone(), RloxType::CallableType(Box::new(function)));
 
     Ok(RloxType::NullType)
   }
@@ -438,6 +439,20 @@ mod tests {
   fn test_functions() -> Result<(), RloxError> {
     let test_input: HashMap<&str, f64> = [
       ("var a = 0; var temp; for (var b = 1; a < 10000; b = temp + b) { print a; temp = a; a = b; } a;", 10946.0),
+    ].iter().cloned().collect();
+
+    for (&input, &expected_result) in test_input.iter() {
+      let val = run(input)?;
+      assert_eq!(val.to_string(), RloxType::NumberType(expected_result).to_string());
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_closures() -> Result<(), RloxError> {
+    let test_input: HashMap<&str, f64> = [
+      ("fun makeCounter() { var i = 0; fun count() { i=i+1; return i; } return count; } var counter=makeCounter(); counter(); counter();", 2.0),
     ].iter().cloned().collect();
 
     for (&input, &expected_result) in test_input.iter() {
