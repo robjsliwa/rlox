@@ -9,6 +9,9 @@ pub enum RloxError {
   #[error("Interpreter error")]
   InterpreterError(String),
 
+  #[error("Resolver error")]
+  ResolverError(String),
+
   #[error("Return value.")]
   ReturnValue(RloxType),
 

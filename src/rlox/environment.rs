@@ -65,4 +65,27 @@ impl Environment {
       }
     }
   }
+
+  pub fn get_at(&self, distance: usize, name: &str) -> Result<RloxType, RloxError> {
+    match self.ancestor(distance) {
+      Some(env) => match env.values.borrow().get(name) {
+        Some(v) => Ok(v.clone()),
+        None => Err(RloxError::InterpreterError(format!("Variable {} not found in environment.", name)))
+      }
+      None => Err(RloxError::InterpreterError("Internal interpreter error, invalid environment distance.".to_string())),
+    }
+  }
+
+  fn ancestor(&self, distance: usize) -> Option<Environment> {
+    let mut current_env = self.clone();
+
+    for _ in 0..distance {
+      current_env = match current_env.enclosing {
+        Some(e) => e.borrow().clone(),
+        None => return None,
+      }
+    }
+
+    Some(current_env)
+  }
 }

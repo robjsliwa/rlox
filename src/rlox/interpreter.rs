@@ -3,6 +3,7 @@ use super::{
   stmt::*,
   rlox_type::*,
   token_type::*,
+  token::*,
   literal::*,
   environment::*,
   rlox_function::RloxFunction,
@@ -11,7 +12,14 @@ use super::{
 use std::{
   cell::RefCell,
   rc::Rc,
+  collections::HashMap,
 };
+
+#[derive(PartialEq, Eq, Hash)]
+pub enum VarExpr {
+  VariableExpr(Variable),
+  AssignmentExpr(Assign<RloxType>),
+}
 
 type Exp = Rc<RefCell<dyn Expr<RloxType>>>;
 type Stm = Rc<RefCell<dyn Stmt<RloxType>>>;
@@ -20,6 +28,7 @@ type Stm = Rc<RefCell<dyn Stmt<RloxType>>>;
 pub struct Interpreter {
   environment: Rc<RefCell<Environment>>,
   pub globals: Rc<RefCell<Environment>>,
+  locals: Rc<RefCell<HashMap<VarExpr, usize>>>
 }
 
 impl Interpreter {
@@ -28,6 +37,7 @@ impl Interpreter {
     Interpreter {
       environment: env_init.clone(),
       globals: env_init.clone(),
+      locals: Rc::new(RefCell::new(HashMap::new())),
     }
   }
 
@@ -118,6 +128,17 @@ impl Interpreter {
 
     self.environment.replace(previous);
     Ok(RloxType::NullType)
+  }
+
+  pub fn resolve(&self, var_expr: VarExpr, depth: usize) {
+    self.locals.borrow_mut().insert(var_expr, depth);
+  }
+
+  fn lookup_variable(&self, name: Token, expr: &VarExpr) -> Result<RloxType, RloxError> {
+    match self.locals.borrow().get(expr) {
+      Some(distance) => self.environment.borrow().get_at(*distance, &name.lexeme),
+      None => self.globals.borrow().get(&name.lexeme),
+    }
   }
 }
 
@@ -213,7 +234,8 @@ impl super::expr::Visitor<RloxType> for Interpreter {
   }
 
   fn visit_variable_expr(&self, expr: &Variable) -> Result<RloxType, RloxError> {
-    self.environment.borrow().get(&expr.name.lexeme)
+    // self.environment.borrow().get(&expr.name.lexeme)
+    self.lookup_variable(expr.name.clone(), &VarExpr::VariableExpr(expr.clone()))
   }
 
   fn visit_assign_expr(&self, expr: &Assign<RloxType>) -> Result<RloxType, RloxError> {
@@ -228,7 +250,7 @@ impl super::expr::Visitor<RloxType> for Interpreter {
     if expr.operator.token_type == TokenType::OR {
       if self.is_truthy(left.clone())? == Literal::BooleanType(true) {
         return Ok(left.clone());
-      } 
+      }
     } else {
       if self.is_truthy(left.clone())? == Literal::BooleanType(false) {
         return Ok(left.clone())
