@@ -31,6 +31,7 @@ macro_rules! parse_grammar_entry {
   }) => {
     pub struct $name<$g: 'static> {
       $(pub $var_name: $t),*,
+      pub id: uuid::Uuid,
     }
 
     impl<$g> $name<$g> {
@@ -39,6 +40,7 @@ macro_rules! parse_grammar_entry {
       ) -> $name<$g> {
         $name {
           $($var_name),*,
+          id: uuid::Uuid::new_v4(),
         }
       }
     }
@@ -58,6 +60,7 @@ macro_rules! parse_grammar_entry {
   }) => {
     pub struct $name {
       $(pub $var_name: $t),*,
+      pub id: uuid::Uuid,
     }
 
     impl $name {
@@ -66,6 +69,7 @@ macro_rules! parse_grammar_entry {
       ) -> $name {
         $name {
           $($var_name),*,
+          id: uuid::Uuid::new_v4(),
         }
       }
     }

@@ -31,7 +31,6 @@ impl RloxFunction {
 impl Callable for RloxFunction {
   fn call(&self, interpreter: &Interpreter, arguments: Vec<RloxType>) -> Result<RloxType, RloxError> {
     let env = Environment::new_with_parent(self.closure.borrow().clone());
-    
     for (i, param) in self.declaration.params.iter().enumerate() {
       env.define(param.lexeme.clone(), arguments.get(i).unwrap().clone());
     }

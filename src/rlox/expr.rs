@@ -41,7 +41,8 @@ generate_ast! {
 // Variable and Assign in HashMap.
 impl PartialEq for Variable {
   fn eq(&self, other: &Self) -> bool {
-      self.name.lexeme == other.name.lexeme
+      // self.name.lexeme == other.name.lexeme
+      self.id == other.id
   }
 }
 
@@ -49,7 +50,8 @@ impl Eq for Variable {}
 
 impl std::hash::Hash for Variable {
   fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-    self.name.lexeme.hash(state);
+    // self.name.lexeme.hash(state);
+    self.id.hash(state);
   }
 }
 
@@ -57,13 +59,21 @@ impl Clone for Variable {
   fn clone(&self) -> Self {
     Variable {
       name: self.name.clone(),
+      id: self.id,
     }
+  }
+}
+
+impl std::fmt::Display for Variable {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    write!(f, "variable {}", self.name.lexeme)
   }
 }
 
 impl<T> PartialEq for Assign<T> {
   fn eq(&self, other: &Self) -> bool {
-      self.name.lexeme == other.name.lexeme
+      // self.name.lexeme == other.name.lexeme
+      self.id == other.id
   }
 }
 
@@ -71,7 +81,8 @@ impl<T> Eq for Assign<T> {}
 
 impl<T> std::hash::Hash for Assign<T> {
   fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
-    self.name.lexeme.hash(state);
+    // self.name.lexeme.hash(state);
+    self.id.hash(state);
   }
 }
 
@@ -80,7 +91,14 @@ impl<T> Clone for Assign<T> {
     Assign {
       name: self.name.clone(),
       value: self.value.clone(),
+      id: self.id,
     }
+  }
+}
+
+impl<T> std::fmt::Display for Assign<T> {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    write!(f, "assign {}", self.name.lexeme)
   }
 }
 

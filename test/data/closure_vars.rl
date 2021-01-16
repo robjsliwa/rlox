@@ -8,3 +8,11 @@ var a = "global";
   var a = "block";
   showA();
 }
+
+fun test() {
+  print a;
+  a=a+"!";
+  print a;
+}
+
+test();

@@ -48,15 +48,20 @@ impl<'a> Resolver {
     self.scopes.borrow_mut().pop();
   }
 
-  fn declare(&self, name: Token) {
+  fn declare(&self, name: Token) -> Result<(), RloxError> {
     let mut scopes = self.scopes.borrow_mut();
     if scopes.is_empty() {
-      return;
+      return Ok(());
     }
 
     if let Some(back_scope) = scopes.last_mut() {
+      if back_scope.contains_key(&name.lexeme) {
+        return Err(RloxError::ResolverError("Already variable with this name in this scope.".to_string()));
+      }
       back_scope.insert(name.lexeme, false);
     }
+
+    Ok(())
   }
 
   fn define(&self, name: Token) {
@@ -83,7 +88,7 @@ impl<'a> Resolver {
   fn resolve_function(&self, stmt: &Function<RloxType>) -> Result<(), RloxError> {
     self.begin_scope();
     for param in stmt.params.clone() {
-      self.declare(param.clone());
+      self.declare(param.clone())?;
       self.define(param);
     }
 
@@ -106,7 +111,7 @@ impl super::stmt::Visitor<RloxType> for Resolver {
   }
 
   fn visit_var_stmt(&self, stmt: &Var<RloxType>) -> Result<RloxType, RloxError> {
-    self.declare(stmt.name.clone());
+    self.declare(stmt.name.clone())?;
     self.resolve_expr(stmt.initializer.clone())?;
     self.define(stmt.name.clone());
 
@@ -114,10 +119,10 @@ impl super::stmt::Visitor<RloxType> for Resolver {
   }
 
   fn visit_function_stmt(&self, stmt: &Function<RloxType>) -> Result<RloxType, RloxError> {
-    self.declare(stmt.name.clone());
+    self.declare(stmt.name.clone())?;
     self.define(stmt.name.clone());
 
-    self.resolve_function(stmt);
+    self.resolve_function(stmt)?;
 
     Ok(RloxType::NullType)
   }
@@ -161,9 +166,9 @@ impl super::stmt::Visitor<RloxType> for Resolver {
 impl super::expr::Visitor<RloxType> for Resolver {
   fn visit_variable_expr(&self, expr: &Variable) -> Result<RloxType, RloxError> {
     {
-      let mut scopes = self.scopes.borrow_mut();
+      let scopes = self.scopes.borrow_mut();
       if !scopes.is_empty() {
-        if let Some(back_scope) = scopes.last_mut() {
+        if let Some(back_scope) = scopes.last() {
           match back_scope.get(&expr.name.lexeme) {
             Some(lexeme) => {
               if *lexeme == false {

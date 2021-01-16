@@ -32,6 +32,13 @@ impl Environment {
     }
   }
 
+  pub fn is_top_level(&self) -> bool {
+    match self.enclosing {
+      Some(_) => false,
+      None => true,
+    }
+  }
+
   pub fn define(&self, name: String, expr: RloxType) {
     self.values.borrow_mut().insert(name, expr);
   }
@@ -63,6 +70,16 @@ impl Environment {
 
         Err(RloxError::InterpreterError(format!("Undefined variable '{}'.", name)))
       }
+    }
+  }
+
+  pub fn assign_at(&self, distance: usize, name: &str, value: RloxType) -> Result<(), RloxError> {
+    match self.ancestor(distance) {
+      Some(env) => {
+        env.values.borrow_mut().insert(name.to_string(), value);
+        Ok(())
+      }
+      None => Err(RloxError::InterpreterError("Internal interpreter error, invalid environment distance.".to_string())),
     }
   }
 

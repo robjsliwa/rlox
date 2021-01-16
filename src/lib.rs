@@ -32,13 +32,18 @@ fn repl_printer(result: Result<RloxType, RloxError>) {
             }
         }
         Err(e) => {
-            match e {
-                RloxError::InterpreterError(i) => eprintln!("{}", i),
-                RloxError::ParserError(p) => eprintln!("{}", p),
-                _ => eprintln!("Unknown error."),
-            }
+            print_rlox_error(e);
         }
     }
+}
+
+fn print_rlox_error(e: RloxError) {
+  match e {
+    RloxError::ResolverError(r) => eprintln!("{}", r),
+    RloxError::InterpreterError(i) => eprintln!("{}", i),
+    RloxError::ParserError(p) => eprintln!("{}", p),
+    _ => eprintln!("Unknown error."),
+  }
 }
 
 fn run(interpreter: Interpreter, data: Vec<char>) -> Result<(), RloxError> {
@@ -50,15 +55,14 @@ fn run(interpreter: Interpreter, data: Vec<char>) -> Result<(), RloxError> {
     match statements {
         Ok(stmt) => {
           let resolver = Resolver::new(interpreter.clone());
-          resolver.resolve_statements(stmt.clone())?;
+          if let Err(e) = resolver.resolve_statements(stmt.clone()) {
+            print_rlox_error(e);
+            return Ok(());
+          }
           interpreter.interpret(stmt, Some(repl_printer))
         }
         Err(e) => {
-            match e {
-                RloxError::InterpreterError(i) => eprintln!("{}", i),
-                RloxError::ParserError(p) => eprintln!("{}", p),
-                _ => eprintln!("Unknown error."),
-            }
+            print_rlox_error(e);
         }
     }
 
