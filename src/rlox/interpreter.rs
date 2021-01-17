@@ -500,4 +500,18 @@ mod tests {
 
     Ok(())
   }
+
+  #[test]
+  fn test_closure_scopes() -> Result<(), RloxError> {
+    let test_input: HashMap<&str, &str> = [
+      ("var a = \"global\"; { fun showA() { print a; } showA(); var a = \"block\"; showA(); } fun test() { print a; a=a+\"!\"; return a; } test();", "global!"),
+    ].iter().cloned().collect();
+
+    for (&input, &expected_result) in test_input.iter() {
+      let val = run(input)?;
+      assert_eq!(val.to_string(), RloxType::StringType(expected_result.to_string()).to_string());
+    }
+
+    Ok(())
+  }
 }
