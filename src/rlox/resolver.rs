@@ -10,17 +10,25 @@ use std::rc::Rc;
 use std::cell::RefCell;
 use std::collections::HashMap;
 
+#[derive(Clone, PartialEq)]
+enum FunctionType {
+  None,
+  Function,
+}
+
 #[derive(Clone)]
 pub struct Resolver {
   scopes: Rc<RefCell<Vec<HashMap<String, bool>>>>,
   interpreter: Interpreter,
+  current_function: Rc<RefCell<FunctionType>>,
 }
 
 impl<'a> Resolver {
   pub fn new(interpreter: Interpreter) -> Resolver {
     Resolver {
       scopes: Rc::new(RefCell::new(Vec::new())),
-      interpreter
+      interpreter,
+      current_function: Rc::new(RefCell::new(FunctionType::None)),
     }
   }
 
@@ -85,7 +93,8 @@ impl<'a> Resolver {
     }
   }
 
-  fn resolve_function(&self, stmt: &Function<RloxType>) -> Result<(), RloxError> {
+  fn resolve_function(&self, stmt: &Function<RloxType>, function_type: FunctionType) -> Result<(), RloxError> {
+    let enclosing_function = self.current_function.replace(function_type);
     self.begin_scope();
     for param in stmt.params.clone() {
       self.declare(param.clone())?;
@@ -96,6 +105,7 @@ impl<'a> Resolver {
       self.resolve_stmt(body_stmt)?;
     }
     self.end_scope();
+    self.current_function.replace(enclosing_function);
 
     Ok(())
   }
@@ -122,7 +132,7 @@ impl super::stmt::Visitor<RloxType> for Resolver {
     self.declare(stmt.name.clone())?;
     self.define(stmt.name.clone());
 
-    self.resolve_function(stmt)?;
+    self.resolve_function(stmt, FunctionType::Function)?;
 
     Ok(RloxType::NullType)
   }
@@ -150,6 +160,9 @@ impl super::stmt::Visitor<RloxType> for Resolver {
   }
 
   fn visit_return_stmt(&self, stmt: &Return<RloxType>) -> Result<RloxType, RloxError> {
+    if *self.current_function.borrow() == FunctionType::None {
+      return Err(RloxError::ResolverError("Can't return from top-level code.".to_string()));
+    }
     self.resolve_expr(stmt.value.clone())?;
 
     Ok(RloxType::NullType)

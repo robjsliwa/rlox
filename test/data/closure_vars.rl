@@ -12,7 +12,7 @@ var a = "global";
 fun test() {
   print a;
   a=a+"!";
-  print a;
+  return a;
 }
 
-test();
+print test();
