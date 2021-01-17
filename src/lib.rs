@@ -9,7 +9,7 @@ use std::io::{stdin, stdout, Write};
 pub fn run_file(filename: &str) -> Result<(), RloxError> {
     let interpreter = Interpreter::new();
     let data = scanners::read_source_code(filename)?;
-    run(&interpreter, data)
+    run(interpreter, data)
 }
 
 pub fn run_repl() -> Result<(), RloxError> {
@@ -20,7 +20,7 @@ pub fn run_repl() -> Result<(), RloxError> {
         print!("> ");
         stdout().flush()?;
         stdin().read_line(&mut data)?;
-        run(&interpreter, data.chars().collect())?;
+        run(interpreter.clone(), data.chars().collect())?;
     }
 }
 
@@ -32,29 +32,37 @@ fn repl_printer(result: Result<RloxType, RloxError>) {
             }
         }
         Err(e) => {
-            match e {
-                RloxError::InterpreterError(i) => eprintln!("{}", i),
-                RloxError::ParserError(p) => eprintln!("{}", p),
-                _ => eprintln!("Unknown error."),
-            }
+            print_rlox_error(e);
         }
     }
 }
 
-fn run(interpreter: &Interpreter, data: Vec<char>) -> Result<(), RloxError> {
+fn print_rlox_error(e: RloxError) {
+  match e {
+    RloxError::ResolverError(r) => eprintln!("{}", r),
+    RloxError::InterpreterError(i) => eprintln!("{}", i),
+    RloxError::ParserError(p) => eprintln!("{}", p),
+    _ => eprintln!("Unknown error."),
+  }
+}
+
+fn run(interpreter: Interpreter, data: Vec<char>) -> Result<(), RloxError> {
     let mut scanner = Scanner::new(data);
     let tokens = scanner.scan_tokens();
     let parser = Parser::new(tokens);
     let statements = parser.parse();
 
     match statements {
-        Ok(stmt) => interpreter.interpret(stmt, Some(repl_printer)),
+        Ok(stmt) => {
+          let resolver = Resolver::new(interpreter.clone());
+          if let Err(e) = resolver.resolve_statements(stmt.clone()) {
+            print_rlox_error(e);
+            return Ok(());
+          }
+          interpreter.interpret(stmt, Some(repl_printer))
+        }
         Err(e) => {
-            match e {
-                RloxError::InterpreterError(i) => eprintln!("{}", i),
-                RloxError::ParserError(p) => eprintln!("{}", p),
-                _ => eprintln!("Unknown error."),
-            }
+            print_rlox_error(e);
         }
     }
 

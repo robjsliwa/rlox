@@ -3,6 +3,7 @@ use super::{
   stmt::*,
   rlox_type::*,
   token_type::*,
+  token::*,
   literal::*,
   environment::*,
   rlox_function::RloxFunction,
@@ -11,7 +12,14 @@ use super::{
 use std::{
   cell::RefCell,
   rc::Rc,
+  collections::HashMap,
 };
+
+#[derive(PartialEq, Eq, Hash)]
+pub enum VarExpr {
+  VariableExpr(Variable),
+  AssignmentExpr(Assign<RloxType>),
+}
 
 type Exp = Rc<RefCell<dyn Expr<RloxType>>>;
 type Stm = Rc<RefCell<dyn Stmt<RloxType>>>;
@@ -19,7 +27,8 @@ type Stm = Rc<RefCell<dyn Stmt<RloxType>>>;
 #[derive(Clone)]
 pub struct Interpreter {
   environment: Rc<RefCell<Environment>>,
-  pub globals: Rc<RefCell<Environment>>,
+  globals: Rc<RefCell<Environment>>,
+  locals: Rc<RefCell<HashMap<VarExpr, usize>>>
 }
 
 impl Interpreter {
@@ -27,7 +36,8 @@ impl Interpreter {
     let env_init = Rc::new(RefCell::new(Environment::new()));
     Interpreter {
       environment: env_init.clone(),
-      globals: env_init.clone(),
+      globals: Rc::new(RefCell::new(Environment::new())),
+      locals: Rc::new(RefCell::new(HashMap::new())),
     }
   }
 
@@ -119,6 +129,17 @@ impl Interpreter {
     self.environment.replace(previous);
     Ok(RloxType::NullType)
   }
+
+  pub fn resolve(&self, var_expr: VarExpr, depth: usize) {
+    self.locals.borrow_mut().insert(var_expr, depth);
+  }
+
+  fn lookup_variable(&self, name: Token, expr: &VarExpr) -> Result<RloxType, RloxError> {
+    match self.locals.borrow().get(expr) {
+      Some(distance) => self.environment.borrow().get_at(*distance, &name.lexeme),
+      None => self.globals.borrow().get(&name.lexeme),
+    }
+  }
 }
 
 impl super::stmt::Visitor<RloxType> for Interpreter {
@@ -158,7 +179,12 @@ impl super::stmt::Visitor<RloxType> for Interpreter {
   fn visit_var_stmt(&self, stmt: &Var<RloxType>) -> Result<RloxType, RloxError> {
     let value = self.evaluate_expr(stmt.initializer.clone())?;
 
-    self.environment.borrow().define(stmt.name.lexeme.clone(), value);
+    let env = self.environment.borrow();
+    if env.is_top_level() {
+      self.globals.borrow().define(stmt.name.lexeme.clone(), value);
+    } else {
+      env.define(stmt.name.lexeme.clone(), value);
+    }
 
     Ok(RloxType::NullType)
   }
@@ -166,7 +192,12 @@ impl super::stmt::Visitor<RloxType> for Interpreter {
   fn visit_function_stmt(&self, stmt: &Function<RloxType>) -> Result<RloxType, RloxError> {
     let env = self.environment.borrow();
     let function = RloxFunction::new(stmt, &env);
-    env.define(stmt.name.lexeme.clone(), RloxType::CallableType(Box::new(function)));
+
+    if env.is_top_level() {
+      self.globals.borrow().define(stmt.name.lexeme.clone(), RloxType::CallableType(Box::new(function)));
+    } else {
+      env.define(stmt.name.lexeme.clone(), RloxType::CallableType(Box::new(function)));
+    }
 
     Ok(RloxType::NullType)
   }
@@ -186,7 +217,7 @@ impl super::expr::Visitor<RloxType> for Interpreter {
     self.compute_binary_operand(&expr.operator.token_type, left, right)
   }
 
-  fn visit_grouping_expr(&self, expr: &Grouping<RloxType>) -> Result<RloxType, RloxError> {
+  fn visit_grouping_expr(&self, _: &Grouping<RloxType>) -> Result<RloxType, RloxError> {
     Ok(RloxType::NullType)
   }
 
@@ -213,12 +244,16 @@ impl super::expr::Visitor<RloxType> for Interpreter {
   }
 
   fn visit_variable_expr(&self, expr: &Variable) -> Result<RloxType, RloxError> {
-    self.environment.borrow().get(&expr.name.lexeme)
+    // self.environment.borrow().get(&expr.name.lexeme)
+    self.lookup_variable(expr.name.clone(), &VarExpr::VariableExpr(expr.clone()))
   }
 
   fn visit_assign_expr(&self, expr: &Assign<RloxType>) -> Result<RloxType, RloxError> {
     let value = self.evaluate_expr(expr.value.clone())?;
-    self.environment.borrow().assign(&expr.name.lexeme, value.clone())?;
+    match self.locals.borrow().get(&VarExpr::AssignmentExpr(expr.clone())) {
+      Some(distance) => self.environment.borrow().assign_at(*distance, &expr.name.lexeme, value.clone())?,
+      None => self.globals.borrow().assign(&expr.name.lexeme, value.clone())?,
+    }
     Ok(value)
   }
 
@@ -228,7 +263,7 @@ impl super::expr::Visitor<RloxType> for Interpreter {
     if expr.operator.token_type == TokenType::OR {
       if self.is_truthy(left.clone())? == Literal::BooleanType(true) {
         return Ok(left.clone());
-      } 
+      }
     } else {
       if self.is_truthy(left.clone())? == Literal::BooleanType(false) {
         return Ok(left.clone())
@@ -273,6 +308,9 @@ mod tests {
     let parser = Parser::new(tokens);
     let statements = parser.parse()?;
     let interpreter = Interpreter::new();
+
+    let resolver = Resolver::new(interpreter.clone());
+    resolver.resolve_statements(statements.clone())?;
 
     let mut final_result = RloxType::NullType;
 

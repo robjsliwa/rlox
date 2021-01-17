@@ -37,6 +37,71 @@ generate_ast! {
   }
 }
 
+// Following is one off implemetation to support storying
+// Variable and Assign in HashMap.
+impl PartialEq for Variable {
+  fn eq(&self, other: &Self) -> bool {
+      // self.name.lexeme == other.name.lexeme
+      self.id == other.id
+  }
+}
+
+impl Eq for Variable {}
+
+impl std::hash::Hash for Variable {
+  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    // self.name.lexeme.hash(state);
+    self.id.hash(state);
+  }
+}
+
+impl Clone for Variable {
+  fn clone(&self) -> Self {
+    Variable {
+      name: self.name.clone(),
+      id: self.id,
+    }
+  }
+}
+
+impl std::fmt::Display for Variable {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    write!(f, "variable {}", self.name.lexeme)
+  }
+}
+
+impl<T> PartialEq for Assign<T> {
+  fn eq(&self, other: &Self) -> bool {
+      // self.name.lexeme == other.name.lexeme
+      self.id == other.id
+  }
+}
+
+impl<T> Eq for Assign<T> {}
+
+impl<T> std::hash::Hash for Assign<T> {
+  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    // self.name.lexeme.hash(state);
+    self.id.hash(state);
+  }
+}
+
+impl<T> Clone for Assign<T> {
+  fn clone(&self) -> Self {
+    Assign {
+      name: self.name.clone(),
+      value: self.value.clone(),
+      id: self.id,
+    }
+  }
+}
+
+impl<T> std::fmt::Display for Assign<T> {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    write!(f, "assign {}", self.name.lexeme)
+  }
+}
+
 // Above generate the following:
 
 // pub trait Expr<T> {
@@ -122,29 +187,5 @@ generate_ast! {
 // impl<T> Expr<T> for Unary<T> {
 //   fn accept(&self, visitor: Rc<RefCell<dyn Visitor<T>>>) -> Result<T, Error> {
 //     visitor.borrow().visit_unary_expr(self)
-//   }
-// }
-
-// #[cfg(test)]
-// mod tests {
-//   // use super::*;
-
-//   generate_ast!(
-//     #[derive(Debug)]
-//     struct Stmt {
-//       a: String,
-//       b: bool,
-//       c: u64,
-//     }
-//   );
-
-//   #[test]
-//   fn create_via_new() {
-//     let stmt = Stmt::new(String::from("Howdy"), true, 10);
-//     println!("stmt {:?}", stmt);
-
-//     assert_eq!(stmt.a, String::from("Howdy"));
-//     assert_eq!(stmt.b, true);
-//     assert_eq!(stmt.c, 10);
 //   }
 // }

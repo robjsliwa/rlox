@@ -32,6 +32,13 @@ impl Environment {
     }
   }
 
+  pub fn is_top_level(&self) -> bool {
+    match self.enclosing {
+      Some(_) => false,
+      None => true,
+    }
+  }
+
   pub fn define(&self, name: String, expr: RloxType) {
     self.values.borrow_mut().insert(name, expr);
   }
@@ -64,5 +71,38 @@ impl Environment {
         Err(RloxError::InterpreterError(format!("Undefined variable '{}'.", name)))
       }
     }
+  }
+
+  pub fn assign_at(&self, distance: usize, name: &str, value: RloxType) -> Result<(), RloxError> {
+    match self.ancestor(distance) {
+      Some(env) => {
+        env.values.borrow_mut().insert(name.to_string(), value);
+        Ok(())
+      }
+      None => Err(RloxError::InterpreterError("Internal interpreter error, invalid environment distance.".to_string())),
+    }
+  }
+
+  pub fn get_at(&self, distance: usize, name: &str) -> Result<RloxType, RloxError> {
+    match self.ancestor(distance) {
+      Some(env) => match env.values.borrow().get(name) {
+        Some(v) => Ok(v.clone()),
+        None => Err(RloxError::InterpreterError(format!("Variable {} not found in environment.", name)))
+      }
+      None => Err(RloxError::InterpreterError("Internal interpreter error, invalid environment distance.".to_string())),
+    }
+  }
+
+  fn ancestor(&self, distance: usize) -> Option<Environment> {
+    let mut current_env = self.clone();
+
+    for _ in 0..distance {
+      current_env = match current_env.enclosing {
+        Some(e) => e.borrow().clone(),
+        None => return None,
+      }
+    }
+
+    Some(current_env)
   }
 }
