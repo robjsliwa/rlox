@@ -174,6 +174,13 @@ impl super::stmt::Visitor<RloxType> for Resolver {
 
     Ok(RloxType::NullType)
   }
+
+  fn visit_class_stmt(&self, stmt: &Class<RloxType>) -> Result<RloxType, RloxError> {
+    self.declare(stmt.name.clone())?;
+    self.define(stmt.name.clone());
+
+    Ok(RloxType::NullType)
+  }
 }
 
 impl super::expr::Visitor<RloxType> for Resolver {

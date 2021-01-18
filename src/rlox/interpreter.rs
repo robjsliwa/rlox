@@ -8,6 +8,7 @@ use super::{
   environment::*,
   rlox_function::RloxFunction,
   rlox_errors::RloxError,
+  rlox_class::RloxClass,
 };
 use std::{
   cell::RefCell,
@@ -206,6 +207,24 @@ impl super::stmt::Visitor<RloxType> for Interpreter {
     let value = self.evaluate_expr(stmt.value.clone())?;
 
     Err(RloxError::ReturnValue(value))
+  }
+
+  fn visit_class_stmt(&self, stmt: &Class<RloxType>) -> Result<RloxType, RloxError> {
+    let env = self.environment.borrow();
+    let klass = RloxClass::new(&stmt.name.lexeme);
+    match env.is_top_level() {
+      true => {
+        let globals = self.globals.borrow();
+        globals.define(stmt.name.lexeme.clone(), RloxType::NullType);
+        globals.assign(&stmt.name.lexeme, Literal::ClassType(klass));
+      }
+      false => {
+        env.define(stmt.name.lexeme.clone(), RloxType::NullType);
+        env.assign(&stmt.name.lexeme, Literal::ClassType(klass));
+      }
+    }
+
+    Ok(RloxType::NullType)
   }
 }
 

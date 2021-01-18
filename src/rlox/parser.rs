@@ -52,7 +52,7 @@ impl Parser {
 
   fn or<T: 'static>(&self) -> ParserExprResult<T> {
     let mut expr = self.and()?;
-    
+
     while self.token_match(vec![TokenType::OR]) {
       let operator = self.previous();
       let right = self.and()?;
@@ -308,7 +308,7 @@ impl Parser {
     let keyword = self.previous();
 
     let mut value: Rc<RefCell<dyn Expr<T>>> = Rc::new(RefCell::new(LiteralObj::new(Some(Literal::NullType))));
-    
+
     if !self.check(TokenType::SEMICOLON) {
       value = self.expression()?;
     }
@@ -356,7 +356,7 @@ impl Parser {
     if let Some(initializer) = initializer {
       body = Rc::new(RefCell::new(Block::new(vec![initializer, body])));
     }
-    
+
     Ok(body)
   }
 
@@ -408,12 +408,16 @@ impl Parser {
   }
 
   fn declaration_impl<T: 'static>(&self) -> ParserStmtResult<T> {
+    if self.token_match(vec![TokenType::CLASS]) {
+      return self.class_declaration();
+    }
+
     if self.token_match(vec![TokenType::FUN]) {
-      return Ok(self.function("function")?);
+      return self.function("function");
     }
 
     if self.token_match(vec![TokenType::VAR]) {
-      return Ok(self.var_declaration()?);
+      return self.var_declaration();
     }
 
     self.statement()
@@ -466,6 +470,20 @@ impl Parser {
 
     self.consume(TokenType::SEMICOLON, "Expect ';' after variable declaration.")?;
     Ok(Rc::new(RefCell::new(Var::new(name, initializer))))
+  }
+
+  fn class_declaration<T: 'static>(&self) -> ParserStmtResult<T> {
+    let name = self.consume(TokenType::IDENTIFIER, "Expected class name.")?;
+    self.consume(TokenType::LEFTBRACE, "Expected '{' before class body.")?;
+
+    let mut methods = Vec::new();
+    while !self.check(TokenType::RIGHTBRACE) && !self.is_at_end() {
+      methods.push(self.function("method")?);
+    }
+
+    self.consume(TokenType::RIGHTBRACE, "Expect '}' adter class body.")?;
+
+    Ok(Rc::new(RefCell::new(Class::new(name, methods))))
   }
 
   pub fn parse<T: 'static>(&self) -> Result<Vec<ParserStmt<T>>, RloxError> {
