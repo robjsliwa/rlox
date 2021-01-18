@@ -1,7 +1,7 @@
 use std::fmt::{Display, Formatter, Result};
 use super::{
   callable::Callable,
-  rlox_class::RloxClass,
+  rlox_instance::RloxInstance,
 };
 
 #[derive(Clone, Debug)]
@@ -10,7 +10,7 @@ pub enum Literal {
   NumberType(f64),
   BooleanType(bool),
   CallableType(Box<dyn Callable>),
-  ClassType(RloxClass),
+  ClassType(RloxInstance),
   NullType,
 }
 
@@ -34,8 +34,8 @@ impl Display for Literal {
       Literal::StringType(s) => write!(f, "{}", s),
       Literal::NumberType(n) => write!(f, "{}", n),
       Literal::BooleanType(b) => write!(f, "{}", b),
-      Literal::CallableType(_) => write!(f, "callable"),
-      Literal::ClassType(k) => write!(f, "Class {}", k.name()),
+      Literal::CallableType(c) => write!(f, "{}", c.name()),
+      Literal::ClassType(k) => write!(f, "{}", k.as_string()),
       Literal::NullType => write!(f, "null"),
     }
   }

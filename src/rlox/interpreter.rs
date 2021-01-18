@@ -216,11 +216,11 @@ impl super::stmt::Visitor<RloxType> for Interpreter {
       true => {
         let globals = self.globals.borrow();
         globals.define(stmt.name.lexeme.clone(), RloxType::NullType);
-        globals.assign(&stmt.name.lexeme, Literal::ClassType(klass));
+        globals.assign(&stmt.name.lexeme, Literal::CallableType(Box::new(klass)))?;
       }
       false => {
         env.define(stmt.name.lexeme.clone(), RloxType::NullType);
-        env.assign(&stmt.name.lexeme, Literal::ClassType(klass));
+        env.assign(&stmt.name.lexeme, Literal::CallableType(Box::new(klass)))?;
       }
     }
 
