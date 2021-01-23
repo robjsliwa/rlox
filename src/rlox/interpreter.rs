@@ -310,6 +310,30 @@ impl super::expr::Visitor<RloxType> for Interpreter {
       _ => Err(RloxError::InterpreterError("Can only call functions and classes.".to_string()))
     }
   }
+
+  fn visit_get_expr(&self, expr: &Get<RloxType>) -> Result<RloxType, RloxError> {
+    let object = self.evaluate_expr(expr.object.clone())?;
+
+    match object {
+      RloxType::ClassType(instance) => {
+        instance.get(&expr.name)
+      }
+      _ => Err(RloxError::InterpreterError("Only instances have properties.".to_string()))
+    }
+  }
+
+  fn visit_set_expr(&self, expr: &Set<RloxType>) -> Result<RloxType, RloxError> {
+    let object = self.evaluate_expr(expr.object.clone())?;
+
+    match object {
+      RloxType::ClassType(instance) => {
+        let value = self.evaluate_expr(expr.value.clone())?;
+        instance.set(&expr.name, &value);
+        Ok(value)
+      }
+      _ => Err(RloxError::InterpreterError("Only instances have flields.".to_string()))
+    }
+  }
 }
 
 #[cfg(test)]

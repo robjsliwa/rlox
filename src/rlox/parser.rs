@@ -42,6 +42,8 @@ impl Parser {
       if let Some(var_expr) = expr.borrow().as_any().downcast_ref::<Variable>() {
         let name = var_expr.name.clone();
         return Ok(Rc::new(RefCell::new(Assign::new(name, value))));
+      } else if let Some(get_expr) = expr.borrow().as_any().downcast_ref::<Get<T>>() {
+        return Ok(Rc::new(RefCell::new(Set::new(get_expr.object.clone(), get_expr.name.clone(), value))));
       }
 
       return Err(RloxError::ParserError(format!("{} Invalid assignment target.", equals.lexeme)))
@@ -180,6 +182,9 @@ impl Parser {
     loop {
       if self.token_match(vec![TokenType::LEFTPAREN]) {
         expr = self.finish_call(expr)?;
+      } else if self.token_match(vec![TokenType::DOT]) {
+        let name = self.consume(TokenType::IDENTIFIER, "Expect property name after '.'.")?;
+        expr = Rc::new(RefCell::new(Get::new(expr, name)));
       } else {
         break;
       }

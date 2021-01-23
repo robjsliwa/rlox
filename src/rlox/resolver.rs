@@ -251,4 +251,17 @@ impl super::expr::Visitor<RloxType> for Resolver {
 
     Ok(RloxType::NullType)
   }
+
+  fn visit_get_expr(&self, expr: &Get<RloxType>) -> Result<RloxType, RloxError> {
+    self.resolve_expr(expr.object.clone())?;
+
+    Ok(RloxType::NullType)
+  }
+
+  fn visit_set_expr(&self, expr: &Set<RloxType>) -> Result<RloxType, RloxError> {
+    self.resolve_expr(expr.value.clone())?;
+    self.resolve_expr(expr.object.clone())?;
+
+    Ok(RloxType::NullType)
+  }
 }
