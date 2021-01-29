@@ -37,7 +37,9 @@ impl RloxInstance {
         None => Err(RloxError::InterpreterError(format!("Interpreter internal error while looking for field {}.", &name.lexeme)))
       }
     }
-    Err(RloxError::InterpreterError(format!("Undefined property {}.", &name.lexeme)))
+
+    let method = self.klass.find_method(&name.lexeme)?;
+    Ok(RloxType::CallableType(Box::new(method)))
   }
 
   pub fn set(&self, name: &Token, value: &RloxType) -> Result<(), RloxError> {

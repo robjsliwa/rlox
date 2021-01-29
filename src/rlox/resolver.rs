@@ -14,6 +14,7 @@ use std::collections::HashMap;
 enum FunctionType {
   None,
   Function,
+  Method,
 }
 
 #[derive(Clone)]
@@ -178,6 +179,14 @@ impl super::stmt::Visitor<RloxType> for Resolver {
   fn visit_class_stmt(&self, stmt: &Class<RloxType>) -> Result<RloxType, RloxError> {
     self.declare(stmt.name.clone())?;
     self.define(stmt.name.clone());
+
+    for method in &stmt.methods {
+      if let Some(func_method) = method.borrow().as_any().downcast_ref::<Function<RloxType>>() {
+        self.resolve_function(func_method, FunctionType::Method)?;
+      } else {
+        return Err(RloxError::ResolverError("Expected method.".to_string()));
+      }
+    }
 
     Ok(RloxType::NullType)
   }

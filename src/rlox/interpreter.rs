@@ -8,7 +8,7 @@ use super::{
   environment::*,
   rlox_function::RloxFunction,
   rlox_errors::RloxError,
-  rlox_class::RloxClass,
+  rlox_class::{RloxClass, RloxClassMethods},
 };
 use std::{
   cell::RefCell,
@@ -141,6 +141,18 @@ impl Interpreter {
       None => self.globals.borrow().get(&name.lexeme),
     }
   }
+
+  fn prepare_klass(&self, stmt: &Class<RloxType>, env: &Environment) -> Result<RloxClass, RloxError> {
+    let mut methods = HashMap::new();
+    for method in &stmt.methods {
+      if let Some(func_method) = method.borrow().as_any().downcast_ref::<Function<RloxType>>() {
+        methods.insert(func_method.name.lexeme.clone(), RloxFunction::new(func_method, env));
+      } else {
+        return Err(RloxError::InterpreterError("Expected method.".to_string()));
+      }
+    }
+    Ok(RloxClass::new(&stmt.name.lexeme, Rc::new(RefCell::new(methods))))
+  }
 }
 
 impl super::stmt::Visitor<RloxType> for Interpreter {
@@ -211,15 +223,17 @@ impl super::stmt::Visitor<RloxType> for Interpreter {
 
   fn visit_class_stmt(&self, stmt: &Class<RloxType>) -> Result<RloxType, RloxError> {
     let env = self.environment.borrow();
-    let klass = RloxClass::new(&stmt.name.lexeme);
+
     match env.is_top_level() {
       true => {
         let globals = self.globals.borrow();
         globals.define(stmt.name.lexeme.clone(), RloxType::NullType);
+        let klass = self.prepare_klass(stmt, &globals)?;
         globals.assign(&stmt.name.lexeme, Literal::CallableType(Box::new(klass)))?;
       }
       false => {
         env.define(stmt.name.lexeme.clone(), RloxType::NullType);
+        let klass = self.prepare_klass(stmt, &env)?;
         env.assign(&stmt.name.lexeme, Literal::CallableType(Box::new(klass)))?;
       }
     }

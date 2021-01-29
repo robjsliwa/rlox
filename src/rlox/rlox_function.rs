@@ -54,3 +54,15 @@ impl Callable for RloxFunction {
     format!("<fn {} >", self.declaration.name.lexeme)
   }
 }
+
+impl std::fmt::Debug for RloxFunction {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    write!(f, "Function {}", self.name())
+  }
+}
+
+impl PartialEq for RloxFunction {
+  fn eq(&self, other: &Self) -> bool {
+      self.name() == other.name()
+  }
+}
