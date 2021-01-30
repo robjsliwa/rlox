@@ -7,6 +7,7 @@ use super::{
   rlox_type::RloxType,
   environment::Environment,
   rlox_errors::RloxError,
+  rlox_instance::RloxInstance,
 };
 
 #[derive(Clone)]
@@ -24,6 +25,15 @@ impl RloxFunction {
       // the function is declared not when it’s called,
       // which is what we want.
       closure: Rc::new(RefCell::new(closure.clone())),
+    }
+  }
+
+  pub fn bind(&self, instance: &RloxInstance) -> RloxFunction {
+    let environment = Environment::new_with_parent(self.closure.borrow().clone());
+    environment.define("this".to_string(), RloxType::ClassType(instance.clone()));
+    RloxFunction {
+      declaration: self.declaration.clone(),
+      closure: Rc::new(RefCell::new(environment)),
     }
   }
 }

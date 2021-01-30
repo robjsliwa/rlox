@@ -8,7 +8,6 @@ use super::{
   rlox_type::RloxType,
   rlox_errors::RloxError,
   token::Token,
-  expr::*,
 };
 
 #[derive(Clone, Debug, PartialEq)]
@@ -39,7 +38,7 @@ impl RloxInstance {
     }
 
     let method = self.klass.find_method(&name.lexeme)?;
-    Ok(RloxType::CallableType(Box::new(method)))
+    Ok(RloxType::CallableType(Box::new(method.bind(self))))
   }
 
   pub fn set(&self, name: &Token, value: &RloxType) -> Result<(), RloxError> {

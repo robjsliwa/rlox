@@ -8,7 +8,7 @@ use super::{
   environment::*,
   rlox_function::RloxFunction,
   rlox_errors::RloxError,
-  rlox_class::{RloxClass, RloxClassMethods},
+  rlox_class::RloxClass,
 };
 use std::{
   cell::RefCell,
@@ -20,6 +20,7 @@ use std::{
 pub enum VarExpr {
   VariableExpr(Variable),
   AssignmentExpr(Assign<RloxType>),
+  ThisExpr(This),
 }
 
 type Exp = Rc<RefCell<dyn Expr<RloxType>>>;
@@ -347,6 +348,10 @@ impl super::expr::Visitor<RloxType> for Interpreter {
       }
       _ => Err(RloxError::InterpreterError("Only instances have flields.".to_string()))
     }
+  }
+
+  fn visit_this_expr(&self, expr: &This) -> Result<RloxType, RloxError> {
+    self.lookup_variable(expr.keyword.clone(), &VarExpr::ThisExpr(expr.clone()))
   }
 }
 

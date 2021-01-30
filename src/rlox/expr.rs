@@ -34,6 +34,7 @@ generate_ast! {
     visit_literal_expr LiteralObj => value: Option<Literal>;
     visit_logical_expr Logical T => left: Exp<T>, operator: Token, right: Exp<T>;
     visit_set_expr Set T => object: Exp<T>, name: Token, value: Exp<T>;
+    visit_this_expr This => keyword: Token;
     visit_unary_expr Unary T => operator: Token, right: Exp<T>;
     visit_variable_expr Variable => name: Token;
   }
@@ -101,6 +102,37 @@ impl<T> Clone for Assign<T> {
 impl<T> std::fmt::Display for Assign<T> {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     write!(f, "assign {}", self.name.lexeme)
+  }
+}
+
+impl PartialEq for This {
+  fn eq(&self, other: &Self) -> bool {
+      // self.name.lexeme == other.name.lexeme
+      self.id == other.id
+  }
+}
+
+impl Eq for This {}
+
+impl std::hash::Hash for This {
+  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    // self.name.lexeme.hash(state);
+    self.id.hash(state);
+  }
+}
+
+impl Clone for This {
+  fn clone(&self) -> Self {
+    This {
+      keyword: self.keyword.clone(),
+      id: self.id,
+    }
+  }
+}
+
+impl std::fmt::Display for This {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    write!(f, "this {}", self.keyword.lexeme)
   }
 }
 

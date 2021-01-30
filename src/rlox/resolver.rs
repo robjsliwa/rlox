@@ -180,6 +180,15 @@ impl super::stmt::Visitor<RloxType> for Resolver {
     self.declare(stmt.name.clone())?;
     self.define(stmt.name.clone());
 
+    self.begin_scope();
+
+    {
+      let mut scopes = self.scopes.borrow_mut();
+      if let Some(back_scope) = scopes.last_mut() {
+        back_scope.insert("this".to_string(), true);
+      }
+    }
+
     for method in &stmt.methods {
       if let Some(func_method) = method.borrow().as_any().downcast_ref::<Function<RloxType>>() {
         self.resolve_function(func_method, FunctionType::Method)?;
@@ -187,6 +196,8 @@ impl super::stmt::Visitor<RloxType> for Resolver {
         return Err(RloxError::ResolverError("Expected method.".to_string()));
       }
     }
+
+    self.end_scope();
 
     Ok(RloxType::NullType)
   }
@@ -270,6 +281,12 @@ impl super::expr::Visitor<RloxType> for Resolver {
   fn visit_set_expr(&self, expr: &Set<RloxType>) -> Result<RloxType, RloxError> {
     self.resolve_expr(expr.value.clone())?;
     self.resolve_expr(expr.object.clone())?;
+
+    Ok(RloxType::NullType)
+  }
+
+  fn visit_this_expr(&self, expr: &This) -> Result<RloxType, RloxError> {
+    self.resolve_local(VarExpr::ThisExpr(expr.clone()), expr.keyword.clone());
 
     Ok(RloxType::NullType)
   }

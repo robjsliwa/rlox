@@ -238,6 +238,10 @@ impl Parser {
       ))));
     }
 
+    if self.token_match(vec![TokenType::THIS]) {
+      return Ok(Rc::new(RefCell::new(This::new(self.previous()))));
+    }
+
     if self.token_match(vec![TokenType::IDENTIFIER]) {
       return Ok(Rc::new(RefCell::new(Variable::new(self.previous()))));
     }
