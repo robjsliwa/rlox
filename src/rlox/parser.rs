@@ -330,7 +330,7 @@ impl Parser {
   fn for_statement<T: 'static>(&self) -> ParserStmtResult<T> {
     self.consume(TokenType::LEFTPAREN, "Expect '(' after 'for'.")?;
 
-    let mut initializer: Option<Stm<T>> = None;
+    let initializer: Option<Stm<T>>;
     if self.token_match(vec![TokenType::SEMICOLON]) {
       initializer = None;
     } else if self.token_match(vec![TokenType::VAR]) {

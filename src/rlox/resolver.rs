@@ -17,11 +17,18 @@ enum FunctionType {
   Method,
 }
 
+#[derive(Clone, PartialEq)]
+enum ClassType {
+  None,
+  Class,
+}
+
 #[derive(Clone)]
 pub struct Resolver {
   scopes: Rc<RefCell<Vec<HashMap<String, bool>>>>,
   interpreter: Interpreter,
   current_function: Rc<RefCell<FunctionType>>,
+  current_class: Rc<RefCell<ClassType>>,
 }
 
 impl<'a> Resolver {
@@ -30,6 +37,7 @@ impl<'a> Resolver {
       scopes: Rc::new(RefCell::new(Vec::new())),
       interpreter,
       current_function: Rc::new(RefCell::new(FunctionType::None)),
+      current_class: Rc::new(RefCell::new(ClassType::None)),
     }
   }
 
@@ -177,6 +185,7 @@ impl super::stmt::Visitor<RloxType> for Resolver {
   }
 
   fn visit_class_stmt(&self, stmt: &Class<RloxType>) -> Result<RloxType, RloxError> {
+    let enclosing_class = self.current_class.replace(ClassType::Class);
     self.declare(stmt.name.clone())?;
     self.define(stmt.name.clone());
 
@@ -198,6 +207,9 @@ impl super::stmt::Visitor<RloxType> for Resolver {
     }
 
     self.end_scope();
+
+    self.current_class.replace(enclosing_class);
+
 
     Ok(RloxType::NullType)
   }
@@ -286,6 +298,10 @@ impl super::expr::Visitor<RloxType> for Resolver {
   }
 
   fn visit_this_expr(&self, expr: &This) -> Result<RloxType, RloxError> {
+    if *self.current_class.borrow() == ClassType::None {
+      return Err(RloxError::ResolverError("Can't use 'this' outside of a class".to_string()));
+    }
+
     self.resolve_local(VarExpr::ThisExpr(expr.clone()), expr.keyword.clone());
 
     Ok(RloxType::NullType)

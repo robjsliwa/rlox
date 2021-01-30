@@ -343,7 +343,7 @@ impl super::expr::Visitor<RloxType> for Interpreter {
     match object {
       RloxType::ClassType(instance) => {
         let value = self.evaluate_expr(expr.value.clone())?;
-        instance.set(&expr.name, &value);
+        instance.set(&expr.name, &value)?;
         Ok(value)
       }
       _ => Err(RloxError::InterpreterError("Only instances have flields.".to_string()))
@@ -572,6 +572,37 @@ mod tests {
     for (&input, &expected_result) in test_input.iter() {
       let val = run(input)?;
       assert_eq!(val.to_string(), RloxType::StringType(expected_result.to_string()).to_string());
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_this() -> Result<(), RloxError> {
+    let test_input: HashMap<&str, &str> = [
+      ("class Cake { taste() { var adjective = \"delicious\"; return \"The \" + this.flavor + \" cake is \" + adjective + \"!\"; } } var cake = Cake(); cake.flavor = \"German chocolate\"; var res = cake.taste(); res;", "The German chocolate cake is delicious!"),
+    ].iter().cloned().collect();
+
+    for (&input, &expected_result) in test_input.iter() {
+      let val = run(input)?;
+      assert_eq!(val.to_string(), RloxType::StringType(expected_result.to_string()).to_string());
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_invalid_use_of_this() -> Result<(), RloxError> {
+    let test_input: HashMap<&str, Rc<RloxError>> = [
+      ("print this;", Rc::new(RloxError::ResolverError("Can't use 'this' outside of a class".to_string()))),
+      ("fun notAMethod() { print this; }", Rc::new(RloxError::ResolverError("Can't use 'this' outside of a class".to_string()))),
+    ].iter().cloned().collect();
+
+    for (input, _) in test_input.into_iter() {
+      match run(input) {
+        Ok(_) => assert_eq!("value", "should not return"),
+        Err(_) => (),
+      }
     }
 
     Ok(())
