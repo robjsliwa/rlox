@@ -16,6 +16,8 @@ mod native_functions;
 mod rlox_function;
 mod rlox_errors;
 mod resolver;
+mod rlox_class;
+mod rlox_instance;
 
 pub use self::ast_printer::*;
 pub use self::error_handler::*;

@@ -14,6 +14,14 @@ use std::collections::HashMap;
 enum FunctionType {
   None,
   Function,
+  Initializer,
+  Method,
+}
+
+#[derive(Clone, PartialEq)]
+enum ClassType {
+  None,
+  Class,
 }
 
 #[derive(Clone)]
@@ -21,6 +29,7 @@ pub struct Resolver {
   scopes: Rc<RefCell<Vec<HashMap<String, bool>>>>,
   interpreter: Interpreter,
   current_function: Rc<RefCell<FunctionType>>,
+  current_class: Rc<RefCell<ClassType>>,
 }
 
 impl<'a> Resolver {
@@ -29,6 +38,7 @@ impl<'a> Resolver {
       scopes: Rc::new(RefCell::new(Vec::new())),
       interpreter,
       current_function: Rc::new(RefCell::new(FunctionType::None)),
+      current_class: Rc::new(RefCell::new(ClassType::None)),
     }
   }
 
@@ -160,8 +170,22 @@ impl super::stmt::Visitor<RloxType> for Resolver {
   }
 
   fn visit_return_stmt(&self, stmt: &Return<RloxType>) -> Result<RloxType, RloxError> {
-    if *self.current_function.borrow() == FunctionType::None {
+    let current_function = self.current_function.borrow();
+    if *current_function == FunctionType::None {
       return Err(RloxError::ResolverError("Can't return from top-level code.".to_string()));
+    }
+
+    if *current_function == FunctionType::Initializer {
+      let mut is_empty_return = false;
+      if let Some(literal_obj) = stmt.value.borrow().as_any().downcast_ref::<LiteralObj>() {
+        if let Some(RloxType::NullType) = literal_obj.value {
+          is_empty_return = true;
+        };
+      }
+
+      if !is_empty_return {
+        return Err(RloxError::ResolverError("Can't return a value from an initializer.".to_string()));
+      }
     }
     self.resolve_expr(stmt.value.clone())?;
 
@@ -171,6 +195,40 @@ impl super::stmt::Visitor<RloxType> for Resolver {
   fn visit_while_stmt(&self, stmt: &While<RloxType>) -> Result<RloxType, RloxError> {
     self.resolve_expr(stmt.condition.clone())?;
     self.resolve_stmt(stmt.body.clone())?;
+
+    Ok(RloxType::NullType)
+  }
+
+  fn visit_class_stmt(&self, stmt: &Class<RloxType>) -> Result<RloxType, RloxError> {
+    let enclosing_class = self.current_class.replace(ClassType::Class);
+    self.declare(stmt.name.clone())?;
+    self.define(stmt.name.clone());
+
+    self.begin_scope();
+
+    {
+      let mut scopes = self.scopes.borrow_mut();
+      if let Some(back_scope) = scopes.last_mut() {
+        back_scope.insert("this".to_string(), true);
+      }
+    }
+
+    for method in &stmt.methods {
+      if let Some(func_method) = method.borrow().as_any().downcast_ref::<Function<RloxType>>() {
+        let mut declaration = FunctionType::Method;
+        if func_method.name.lexeme == "init" {
+          declaration = FunctionType::Initializer;
+        }
+        self.resolve_function(func_method, declaration)?;
+      } else {
+        return Err(RloxError::ResolverError("Expected method.".to_string()));
+      }
+    }
+
+    self.end_scope();
+
+    self.current_class.replace(enclosing_class);
+
 
     Ok(RloxType::NullType)
   }
@@ -241,6 +299,29 @@ impl super::expr::Visitor<RloxType> for Resolver {
 
   fn visit_unary_expr(&self, expr: &Unary<RloxType>) -> Result<RloxType, RloxError> {
     self.resolve_expr(expr.right.clone())?;
+
+    Ok(RloxType::NullType)
+  }
+
+  fn visit_get_expr(&self, expr: &Get<RloxType>) -> Result<RloxType, RloxError> {
+    self.resolve_expr(expr.object.clone())?;
+
+    Ok(RloxType::NullType)
+  }
+
+  fn visit_set_expr(&self, expr: &Set<RloxType>) -> Result<RloxType, RloxError> {
+    self.resolve_expr(expr.value.clone())?;
+    self.resolve_expr(expr.object.clone())?;
+
+    Ok(RloxType::NullType)
+  }
+
+  fn visit_this_expr(&self, expr: &This) -> Result<RloxType, RloxError> {
+    if *self.current_class.borrow() == ClassType::None {
+      return Err(RloxError::ResolverError("Can't use 'this' outside of a class".to_string()));
+    }
+
+    self.resolve_local(VarExpr::ThisExpr(expr.clone()), expr.keyword.clone());
 
     Ok(RloxType::NullType)
   }

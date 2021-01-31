@@ -39,6 +39,7 @@ pub type Stm<T> = Rc<RefCell<dyn Stmt<T>>>;
 generate_ast! {
   Stmt {
     visit_block_stmt Block T => statements: Vec<Stm<T>>;
+    visit_class_stmt Class T => name: Token, methods: Vec<Stm<T>>;
     visit_expression_stmt Expression T => expression: Exp<T>;
     visit_function_stmt Function T => name: Token, params: Vec<Token>, body: Vec<Stm<T>>;
     visit_if_stmt If T => condition: Exp<T>, then_branch: Stm<T>, else_branch: Option<Stm<T>>;

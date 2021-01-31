@@ -8,6 +8,7 @@ use super::{
   environment::*,
   rlox_function::RloxFunction,
   rlox_errors::RloxError,
+  rlox_class::RloxClass,
 };
 use std::{
   cell::RefCell,
@@ -19,6 +20,7 @@ use std::{
 pub enum VarExpr {
   VariableExpr(Variable),
   AssignmentExpr(Assign<RloxType>),
+  ThisExpr(This),
 }
 
 type Exp = Rc<RefCell<dyn Expr<RloxType>>>;
@@ -140,6 +142,22 @@ impl Interpreter {
       None => self.globals.borrow().get(&name.lexeme),
     }
   }
+
+  fn prepare_klass(&self, stmt: &Class<RloxType>, env: &Environment) -> Result<RloxClass, RloxError> {
+    let mut methods = HashMap::new();
+    for method in &stmt.methods {
+      if let Some(func_method) = method.borrow().as_any().downcast_ref::<Function<RloxType>>() {
+        let mut is_initialize = false;
+        if func_method.name.lexeme == "init" {
+          is_initialize = true;
+        }
+        methods.insert(func_method.name.lexeme.clone(), RloxFunction::new(func_method, env, is_initialize));
+      } else {
+        return Err(RloxError::InterpreterError("Expected method.".to_string()));
+      }
+    }
+    Ok(RloxClass::new(&stmt.name.lexeme, Rc::new(RefCell::new(methods))))
+  }
 }
 
 impl super::stmt::Visitor<RloxType> for Interpreter {
@@ -191,7 +209,7 @@ impl super::stmt::Visitor<RloxType> for Interpreter {
 
   fn visit_function_stmt(&self, stmt: &Function<RloxType>) -> Result<RloxType, RloxError> {
     let env = self.environment.borrow();
-    let function = RloxFunction::new(stmt, &env);
+    let function = RloxFunction::new(stmt, &env, false);
 
     if env.is_top_level() {
       self.globals.borrow().define(stmt.name.lexeme.clone(), RloxType::CallableType(Box::new(function)));
@@ -206,6 +224,26 @@ impl super::stmt::Visitor<RloxType> for Interpreter {
     let value = self.evaluate_expr(stmt.value.clone())?;
 
     Err(RloxError::ReturnValue(value))
+  }
+
+  fn visit_class_stmt(&self, stmt: &Class<RloxType>) -> Result<RloxType, RloxError> {
+    let env = self.environment.borrow();
+
+    match env.is_top_level() {
+      true => {
+        let globals = self.globals.borrow();
+        globals.define(stmt.name.lexeme.clone(), RloxType::NullType);
+        let klass = self.prepare_klass(stmt, &globals)?;
+        globals.assign(&stmt.name.lexeme, Literal::CallableType(Box::new(klass)))?;
+      }
+      false => {
+        env.define(stmt.name.lexeme.clone(), RloxType::NullType);
+        let klass = self.prepare_klass(stmt, &env)?;
+        env.assign(&stmt.name.lexeme, Literal::CallableType(Box::new(klass)))?;
+      }
+    }
+
+    Ok(RloxType::NullType)
   }
 }
 
@@ -290,6 +328,34 @@ impl super::expr::Visitor<RloxType> for Interpreter {
       }
       _ => Err(RloxError::InterpreterError("Can only call functions and classes.".to_string()))
     }
+  }
+
+  fn visit_get_expr(&self, expr: &Get<RloxType>) -> Result<RloxType, RloxError> {
+    let object = self.evaluate_expr(expr.object.clone())?;
+
+    match object {
+      RloxType::ClassType(instance) => {
+        instance.get(&expr.name)
+      }
+      _ => Err(RloxError::InterpreterError("Only instances have properties.".to_string()))
+    }
+  }
+
+  fn visit_set_expr(&self, expr: &Set<RloxType>) -> Result<RloxType, RloxError> {
+    let object = self.evaluate_expr(expr.object.clone())?;
+
+    match object {
+      RloxType::ClassType(instance) => {
+        let value = self.evaluate_expr(expr.value.clone())?;
+        instance.set(&expr.name, &value)?;
+        Ok(value)
+      }
+      _ => Err(RloxError::InterpreterError("Only instances have flields.".to_string()))
+    }
+  }
+
+  fn visit_this_expr(&self, expr: &This) -> Result<RloxType, RloxError> {
+    self.lookup_variable(expr.keyword.clone(), &VarExpr::ThisExpr(expr.clone()))
   }
 }
 
@@ -496,6 +562,51 @@ mod tests {
     for (&input, &expected_result) in test_input.iter() {
       let val = run(input)?;
       assert_eq!(val.to_string(), RloxType::NumberType(expected_result).to_string());
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_closure_scopes() -> Result<(), RloxError> {
+    let test_input: HashMap<&str, &str> = [
+      ("var a = \"global\"; { fun showA() { print a; } showA(); var a = \"block\"; showA(); } fun test() { print a; a=a+\"!\"; return a; } test();", "global!"),
+    ].iter().cloned().collect();
+
+    for (&input, &expected_result) in test_input.iter() {
+      let val = run(input)?;
+      assert_eq!(val.to_string(), RloxType::StringType(expected_result.to_string()).to_string());
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_this() -> Result<(), RloxError> {
+    let test_input: HashMap<&str, &str> = [
+      ("class Cake { taste() { var adjective = \"delicious\"; return \"The \" + this.flavor + \" cake is \" + adjective + \"!\"; } } var cake = Cake(); cake.flavor = \"German chocolate\"; var res = cake.taste(); res;", "The German chocolate cake is delicious!"),
+    ].iter().cloned().collect();
+
+    for (&input, &expected_result) in test_input.iter() {
+      let val = run(input)?;
+      assert_eq!(val.to_string(), RloxType::StringType(expected_result.to_string()).to_string());
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_invalid_use_of_this() -> Result<(), RloxError> {
+    let test_input: HashMap<&str, Rc<RloxError>> = [
+      ("print this;", Rc::new(RloxError::ResolverError("Can't use 'this' outside of a class".to_string()))),
+      ("fun notAMethod() { print this; }", Rc::new(RloxError::ResolverError("Can't use 'this' outside of a class".to_string()))),
+    ].iter().cloned().collect();
+
+    for (input, _) in test_input.into_iter() {
+      match run(input) {
+        Ok(_) => assert_eq!("value", "should not return"),
+        Err(_) => (),
+      }
     }
 
     Ok(())

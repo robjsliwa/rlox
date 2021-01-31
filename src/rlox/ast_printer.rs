@@ -93,6 +93,18 @@ impl Visitor<String> for AstPrinter {
   fn visit_call_expr(&self, _: &Call<String>) -> Result<String, RloxError> {
     Err(RloxError::ParserError("Not implemented".to_string()))
   }
+
+  fn visit_get_expr(&self, _: &Get<String>) -> Result<String, RloxError> {
+    Err(RloxError::ParserError("Not implemented".to_string()))
+  }
+
+  fn visit_set_expr(&self, _: &Set<String>) -> Result<String, RloxError> {
+    Err(RloxError::ParserError("Not implemented".to_string()))
+  }
+
+  fn visit_this_expr(&self, _: &This) -> Result<String, RloxError> {
+    Err(RloxError::ParserError("Not implemented".to_string()))
+  }
 }
 
 #[cfg(test)]

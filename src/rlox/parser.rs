@@ -42,6 +42,8 @@ impl Parser {
       if let Some(var_expr) = expr.borrow().as_any().downcast_ref::<Variable>() {
         let name = var_expr.name.clone();
         return Ok(Rc::new(RefCell::new(Assign::new(name, value))));
+      } else if let Some(get_expr) = expr.borrow().as_any().downcast_ref::<Get<T>>() {
+        return Ok(Rc::new(RefCell::new(Set::new(get_expr.object.clone(), get_expr.name.clone(), value))));
       }
 
       return Err(RloxError::ParserError(format!("{} Invalid assignment target.", equals.lexeme)))
@@ -52,7 +54,7 @@ impl Parser {
 
   fn or<T: 'static>(&self) -> ParserExprResult<T> {
     let mut expr = self.and()?;
-    
+
     while self.token_match(vec![TokenType::OR]) {
       let operator = self.previous();
       let right = self.and()?;
@@ -180,6 +182,9 @@ impl Parser {
     loop {
       if self.token_match(vec![TokenType::LEFTPAREN]) {
         expr = self.finish_call(expr)?;
+      } else if self.token_match(vec![TokenType::DOT]) {
+        let name = self.consume(TokenType::IDENTIFIER, "Expect property name after '.'.")?;
+        expr = Rc::new(RefCell::new(Get::new(expr, name)));
       } else {
         break;
       }
@@ -231,6 +236,10 @@ impl Parser {
       return Ok(Rc::new(RefCell::new(LiteralObj::new(
         self.previous().literal,
       ))));
+    }
+
+    if self.token_match(vec![TokenType::THIS]) {
+      return Ok(Rc::new(RefCell::new(This::new(self.previous()))));
     }
 
     if self.token_match(vec![TokenType::IDENTIFIER]) {
@@ -308,7 +317,7 @@ impl Parser {
     let keyword = self.previous();
 
     let mut value: Rc<RefCell<dyn Expr<T>>> = Rc::new(RefCell::new(LiteralObj::new(Some(Literal::NullType))));
-    
+
     if !self.check(TokenType::SEMICOLON) {
       value = self.expression()?;
     }
@@ -321,7 +330,7 @@ impl Parser {
   fn for_statement<T: 'static>(&self) -> ParserStmtResult<T> {
     self.consume(TokenType::LEFTPAREN, "Expect '(' after 'for'.")?;
 
-    let mut initializer: Option<Stm<T>> = None;
+    let initializer: Option<Stm<T>>;
     if self.token_match(vec![TokenType::SEMICOLON]) {
       initializer = None;
     } else if self.token_match(vec![TokenType::VAR]) {
@@ -356,7 +365,7 @@ impl Parser {
     if let Some(initializer) = initializer {
       body = Rc::new(RefCell::new(Block::new(vec![initializer, body])));
     }
-    
+
     Ok(body)
   }
 
@@ -408,12 +417,16 @@ impl Parser {
   }
 
   fn declaration_impl<T: 'static>(&self) -> ParserStmtResult<T> {
+    if self.token_match(vec![TokenType::CLASS]) {
+      return self.class_declaration();
+    }
+
     if self.token_match(vec![TokenType::FUN]) {
-      return Ok(self.function("function")?);
+      return self.function("function");
     }
 
     if self.token_match(vec![TokenType::VAR]) {
-      return Ok(self.var_declaration()?);
+      return self.var_declaration();
     }
 
     self.statement()
@@ -466,6 +479,20 @@ impl Parser {
 
     self.consume(TokenType::SEMICOLON, "Expect ';' after variable declaration.")?;
     Ok(Rc::new(RefCell::new(Var::new(name, initializer))))
+  }
+
+  fn class_declaration<T: 'static>(&self) -> ParserStmtResult<T> {
+    let name = self.consume(TokenType::IDENTIFIER, "Expected class name.")?;
+    self.consume(TokenType::LEFTBRACE, "Expected '{' before class body.")?;
+
+    let mut methods = Vec::new();
+    while !self.check(TokenType::RIGHTBRACE) && !self.is_at_end() {
+      methods.push(self.function("method")?);
+    }
+
+    self.consume(TokenType::RIGHTBRACE, "Expect '}' adter class body.")?;
+
+    Ok(Rc::new(RefCell::new(Class::new(name, methods))))
   }
 
   pub fn parse<T: 'static>(&self) -> Result<Vec<ParserStmt<T>>, RloxError> {

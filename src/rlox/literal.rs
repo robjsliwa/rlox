@@ -1,5 +1,8 @@
 use std::fmt::{Display, Formatter, Result};
-use super::callable::Callable;
+use super::{
+  callable::Callable,
+  rlox_instance::RloxInstance,
+};
 
 #[derive(Clone, Debug)]
 pub enum Literal {
@@ -7,6 +10,7 @@ pub enum Literal {
   NumberType(f64),
   BooleanType(bool),
   CallableType(Box<dyn Callable>),
+  ClassType(RloxInstance),
   NullType,
 }
 
@@ -17,6 +21,7 @@ impl PartialEq for Literal {
           (Literal::NumberType(nl), Literal::NumberType(nr)) => nl == nr,
           (Literal::BooleanType(bl), Literal::BooleanType(br)) => bl == br,
           (Literal::CallableType(cl), Literal::CallableType(cr)) => cl == cr,
+          (Literal::ClassType(kl), Literal::ClassType(kr)) => kl == kr,
           (Literal::NullType, Literal::NullType) => true,
           (_, _) => false,
       }
@@ -29,7 +34,8 @@ impl Display for Literal {
       Literal::StringType(s) => write!(f, "{}", s),
       Literal::NumberType(n) => write!(f, "{}", n),
       Literal::BooleanType(b) => write!(f, "{}", b),
-      Literal::CallableType(_) => write!(f, "callable"),
+      Literal::CallableType(c) => write!(f, "{}", c.name()),
+      Literal::ClassType(k) => write!(f, "{}", k.as_string()),
       Literal::NullType => write!(f, "null"),
     }
   }
