@@ -59,7 +59,12 @@ impl Callable for RloxFunction {
       }
       Err(e) => {
         match e {
-          RloxError::ReturnValue(v) => Ok(v),
+          RloxError::ReturnValue(v) => {
+            if self.is_initializer {
+              return closure.get_at(0, "this");
+            }
+            Ok(v)
+          }
           _ => Err(e),
         }
       }

@@ -14,6 +14,7 @@ use std::collections::HashMap;
 enum FunctionType {
   None,
   Function,
+  Initializer,
   Method,
 }
 
@@ -169,8 +170,22 @@ impl super::stmt::Visitor<RloxType> for Resolver {
   }
 
   fn visit_return_stmt(&self, stmt: &Return<RloxType>) -> Result<RloxType, RloxError> {
-    if *self.current_function.borrow() == FunctionType::None {
+    let current_function = self.current_function.borrow();
+    if *current_function == FunctionType::None {
       return Err(RloxError::ResolverError("Can't return from top-level code.".to_string()));
+    }
+
+    if *current_function == FunctionType::Initializer {
+      let mut is_empty_return = false;
+      if let Some(literal_obj) = stmt.value.borrow().as_any().downcast_ref::<LiteralObj>() {
+        if let Some(RloxType::NullType) = literal_obj.value {
+          is_empty_return = true;
+        };
+      }
+
+      if !is_empty_return {
+        return Err(RloxError::ResolverError("Can't return a value from an initializer.".to_string()));
+      }
     }
     self.resolve_expr(stmt.value.clone())?;
 
@@ -200,7 +215,11 @@ impl super::stmt::Visitor<RloxType> for Resolver {
 
     for method in &stmt.methods {
       if let Some(func_method) = method.borrow().as_any().downcast_ref::<Function<RloxType>>() {
-        self.resolve_function(func_method, FunctionType::Method)?;
+        let mut declaration = FunctionType::Method;
+        if func_method.name.lexeme == "init" {
+          declaration = FunctionType::Initializer;
+        }
+        self.resolve_function(func_method, declaration)?;
       } else {
         return Err(RloxError::ResolverError("Expected method.".to_string()));
       }
