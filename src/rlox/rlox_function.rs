@@ -14,10 +14,11 @@ use super::{
 pub struct RloxFunction {
   declaration: Rc<Function<RloxType>>,
   closure: Rc<RefCell<Environment>>,
+  is_initializer: bool,
 }
 
 impl RloxFunction {
-  pub fn new(decl: &Function<RloxType>, closure: &Environment) -> RloxFunction {
+  pub fn new(decl: &Function<RloxType>, closure: &Environment, is_initializer: bool) -> RloxFunction {
     let new_declaration = Function::new(decl.name.clone(), decl.params.clone(), decl.body.clone());
     RloxFunction {
       declaration: Rc::new(new_declaration),
@@ -25,6 +26,7 @@ impl RloxFunction {
       // the function is declared not when it’s called,
       // which is what we want.
       closure: Rc::new(RefCell::new(closure.clone())),
+      is_initializer,
     }
   }
 
@@ -34,19 +36,27 @@ impl RloxFunction {
     RloxFunction {
       declaration: self.declaration.clone(),
       closure: Rc::new(RefCell::new(environment)),
+      is_initializer: self.is_initializer,
     }
   }
 }
 
 impl Callable for RloxFunction {
   fn call(&self, interpreter: &Interpreter, arguments: Vec<RloxType>) -> Result<RloxType, RloxError> {
-    let env = Environment::new_with_parent(self.closure.borrow().clone());
+    let closure = self.closure.borrow();
+    let env = Environment::new_with_parent(closure.clone());
     for (i, param) in self.declaration.params.iter().enumerate() {
       env.define(param.lexeme.clone(), arguments.get(i).unwrap().clone());
     }
 
     match interpreter.execute_block(self.declaration.body.clone(), env) {
-      Ok(r) => Ok(r),
+      Ok(r) => {
+        if self.is_initializer {
+          return Ok(closure.get_at(0, "this")?);
+        }
+
+        Ok(r)
+      }
       Err(e) => {
         match e {
           RloxError::ReturnValue(v) => Ok(v),

@@ -42,6 +42,17 @@ cake.taste(); // Prints "The German chocolate cake is delicious!".
 
 // Five
 
+class Foo {
+  init() {
+    print this;
+  }
+}
+
+var foo = Foo();
+print foo.init();
+
+// Six
+
 //class Person {
 //  sayName() {
 //    print this.name;

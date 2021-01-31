@@ -48,11 +48,17 @@ impl RloxClass {
 impl Callable for RloxClass {
   fn call(&self, interpreter: &Interpreter, arguments: Vec<RloxType>) -> Result<RloxType, RloxError> {
     let instance = RloxInstance::new(self.clone());
+    if let Ok(initializer) = self.find_method("init") {
+      initializer.bind(&instance).call(interpreter, arguments)?;
+    }
     Ok(RloxType::ClassType(instance))
   }
 
   fn arity(&self) -> usize {
-    0
+    match self.find_method("init") {
+      Ok(initializer) => initializer.arity(),
+      Err(_) => 0,
+    }
   }
 
   fn name(&self) -> String {

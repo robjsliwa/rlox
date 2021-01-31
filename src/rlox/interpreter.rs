@@ -147,7 +147,11 @@ impl Interpreter {
     let mut methods = HashMap::new();
     for method in &stmt.methods {
       if let Some(func_method) = method.borrow().as_any().downcast_ref::<Function<RloxType>>() {
-        methods.insert(func_method.name.lexeme.clone(), RloxFunction::new(func_method, env));
+        let mut is_initialize = false;
+        if func_method.name.lexeme == "init" {
+          is_initialize = true;
+        }
+        methods.insert(func_method.name.lexeme.clone(), RloxFunction::new(func_method, env, is_initialize));
       } else {
         return Err(RloxError::InterpreterError("Expected method.".to_string()));
       }
@@ -205,7 +209,7 @@ impl super::stmt::Visitor<RloxType> for Interpreter {
 
   fn visit_function_stmt(&self, stmt: &Function<RloxType>) -> Result<RloxType, RloxError> {
     let env = self.environment.borrow();
-    let function = RloxFunction::new(stmt, &env);
+    let function = RloxFunction::new(stmt, &env, false);
 
     if env.is_top_level() {
       self.globals.borrow().define(stmt.name.lexeme.clone(), RloxType::CallableType(Box::new(function)));
