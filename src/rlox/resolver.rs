@@ -204,6 +204,21 @@ impl super::stmt::Visitor<RloxType> for Resolver {
     self.declare(stmt.name.clone())?;
     self.define(stmt.name.clone());
 
+    if let Some(superclass) = stmt.superclass.clone() {
+      if stmt.name.lexeme == superclass.name.lexeme {
+        return Err(RloxError::ResolverError("A class can't inherit from itself.".to_string()));
+      }
+      self.resolve_expr(Rc::new(RefCell::new(superclass)))?;
+    }
+
+    if let Some(superklass) = &stmt.superclass {
+      self.begin_scope();
+      let mut scopes = self.scopes.borrow_mut();
+      if let Some(back_scope) = scopes.last_mut() {
+        back_scope.insert("super".to_string(), true);
+      }
+    }
+
     self.begin_scope();
 
     {
@@ -226,6 +241,10 @@ impl super::stmt::Visitor<RloxType> for Resolver {
     }
 
     self.end_scope();
+
+    if let Some(_) = stmt.superclass {
+      self.end_scope();
+    }
 
     self.current_class.replace(enclosing_class);
 
@@ -322,6 +341,12 @@ impl super::expr::Visitor<RloxType> for Resolver {
     }
 
     self.resolve_local(VarExpr::ThisExpr(expr.clone()), expr.keyword.clone());
+
+    Ok(RloxType::NullType)
+  }
+
+  fn visit_super_expr(&self, expr: &Super) -> Result<RloxType, RloxError> {
+    self.resolve_local(VarExpr::SuperExpr(expr.clone()), expr.keyword.clone());
 
     Ok(RloxType::NullType)
   }

@@ -50,3 +50,28 @@ class Foo {
 
 var foo = Foo();
 print foo.init();
+
+// Six
+
+class Doughnut {
+  cook() {
+    return "Fry until golden brown.";
+  }
+
+  cookAnother() {
+    return "Fry until golden.";
+  }
+}
+
+class BostonCream < Doughnut {
+  cookAnother() {
+    var orig = super.cookAnother();
+    return orig + " Then pipe full of custard and coat with chocolate.";
+  }
+}
+
+var first = BostonCream().cook();
+print first;
+
+var second = BostonCream().cookAnother();
+print second;

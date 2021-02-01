@@ -10,7 +10,7 @@ use super::{
 #[derive(Debug, Clone)]
 pub struct Environment {
   values: Rc<RefCell<HashMap<String, RloxType>>>,
-  enclosing: Option<Rc<RefCell<Environment>>>,
+  pub enclosing: Option<Rc<RefCell<Environment>>>,
 }
 
 impl Environment {
