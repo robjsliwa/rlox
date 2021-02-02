@@ -8,6 +8,7 @@ pub trait Callable: CallableClone {
   fn arity(&self) -> usize;
   fn call(&self, interpreter: &Interpreter, arguments: Vec<RloxType>) -> Result<RloxType, RloxError>;
   fn name(&self) -> String;
+  fn as_any(&self) -> &dyn std::any::Any;
 }
 
 pub trait CallableClone {
@@ -32,7 +33,7 @@ impl Clone for Box<dyn Callable> {
 impl std::fmt::Debug for Box<dyn Callable> {
   fn fmt(&self, fmt: &mut std::fmt::Formatter<'_>) -> Result<(), std::fmt::Error> {
       write!(fmt, "callable");
-      Ok(()) 
+      Ok(())
   }
 }
 

@@ -21,6 +21,7 @@ pub enum VarExpr {
   VariableExpr(Variable),
   AssignmentExpr(Assign<RloxType>),
   ThisExpr(This),
+  SuperExpr(Super),
 }
 
 type Exp = Rc<RefCell<dyn Expr<RloxType>>>;
@@ -143,7 +144,7 @@ impl Interpreter {
     }
   }
 
-  fn prepare_klass(&self, stmt: &Class<RloxType>, env: &Environment) -> Result<RloxClass, RloxError> {
+  fn prepare_klass(&self, stmt: &Class<RloxType>, superclass: Option<RloxClass>, env: &Environment) -> Result<RloxClass, RloxError> {
     let mut methods = HashMap::new();
     for method in &stmt.methods {
       if let Some(func_method) = method.borrow().as_any().downcast_ref::<Function<RloxType>>() {
@@ -156,7 +157,23 @@ impl Interpreter {
         return Err(RloxError::InterpreterError("Expected method.".to_string()));
       }
     }
-    Ok(RloxClass::new(&stmt.name.lexeme, Rc::new(RefCell::new(methods))))
+    Ok(RloxClass::new(&stmt.name.lexeme, superclass, Rc::new(RefCell::new(methods))))
+  }
+
+  fn process_klass(&self, stmt: &Class<RloxType>, superklass: Option<RloxClass>, env: &Environment) -> Result<(), RloxError> {
+    if let Some(sk) = superklass.clone() {
+      env.define(stmt.name.lexeme.clone(), RloxType::NullType);
+      let environment = Environment::new_with_parent(env.clone());
+      environment.define("super".to_string(), RloxType::CallableType(Box::new(sk.clone())));
+      let klass = self.prepare_klass(stmt, Some(sk.clone()), &environment)?;
+      env.assign(&stmt.name.lexeme, Literal::CallableType(Box::new(klass)))?;
+    } else {
+      env.define(stmt.name.lexeme.clone(), RloxType::NullType);
+      let klass = self.prepare_klass(stmt, superklass, env)?;
+      env.assign(&stmt.name.lexeme, Literal::CallableType(Box::new(klass)))?;
+    }
+
+    Ok(())
   }
 }
 
@@ -227,19 +244,37 @@ impl super::stmt::Visitor<RloxType> for Interpreter {
   }
 
   fn visit_class_stmt(&self, stmt: &Class<RloxType>) -> Result<RloxType, RloxError> {
+    let mut superklass: Option<RloxClass> = None;
+    if let Some(super_class) = stmt.superclass.clone() {
+      let superclass = self.evaluate_expr(Rc::new(RefCell::new(super_class)))?;
+
+      match superclass {
+        RloxType::CallableType(c) => {
+          if let Some(s) = c.as_any().downcast_ref::<RloxClass>() {
+            superklass = Some(s.clone());
+          } else {
+            return Err(RloxError::ResolverError("Superclass must be a class.".to_string()));
+          }
+        }
+        _ => return Err(RloxError::ResolverError("Superclass must be a class.".to_string())),
+      }
+    }
+
     let env = self.environment.borrow();
 
     match env.is_top_level() {
       true => {
         let globals = self.globals.borrow();
-        globals.define(stmt.name.lexeme.clone(), RloxType::NullType);
-        let klass = self.prepare_klass(stmt, &globals)?;
-        globals.assign(&stmt.name.lexeme, Literal::CallableType(Box::new(klass)))?;
+        // globals.define(stmt.name.lexeme.clone(), RloxType::NullType);
+        // let klass = self.prepare_klass(stmt, superklass, &globals)?;
+        // globals.assign(&stmt.name.lexeme, Literal::CallableType(Box::new(klass)))?;
+        self.process_klass(stmt, superklass, &globals)?;
       }
       false => {
-        env.define(stmt.name.lexeme.clone(), RloxType::NullType);
-        let klass = self.prepare_klass(stmt, &env)?;
-        env.assign(&stmt.name.lexeme, Literal::CallableType(Box::new(klass)))?;
+        // env.define(stmt.name.lexeme.clone(), RloxType::NullType);
+        // let klass = self.prepare_klass(stmt, superklass, &env)?;
+        // env.assign(&stmt.name.lexeme, Literal::CallableType(Box::new(klass)))?;
+        self.process_klass(stmt, superklass, &env)?;
       }
     }
 
@@ -356,6 +391,35 @@ impl super::expr::Visitor<RloxType> for Interpreter {
 
   fn visit_this_expr(&self, expr: &This) -> Result<RloxType, RloxError> {
     self.lookup_variable(expr.keyword.clone(), &VarExpr::ThisExpr(expr.clone()))
+  }
+
+  fn visit_super_expr(&self, expr: &Super) -> Result<RloxType, RloxError> {
+    let distance = match self.locals.borrow().get(&VarExpr::SuperExpr(expr.clone())) {
+      Some(d) => d.clone(),
+      None => return Err(RloxError::InterpreterError("Interpreter internal error accessing 'super'.".to_string())),
+    };
+
+    let environment = self.environment.borrow();
+
+    let superclass = match environment.get_at(distance, "super")? {
+      RloxType::CallableType(ct) => {
+        if let Some(s) = ct.as_any().downcast_ref::<RloxClass>() {
+          s.clone()
+        } else {
+          return Err(RloxError::ResolverError("'super' must be a class.".to_string()));
+        }
+      }
+      _ => return Err(RloxError::InterpreterError("Internal interpreter error, expected RloxClass type but received different type.".to_string())),
+    };
+
+    let object = match environment.get_at(distance - 1, "this")? {
+      RloxType::ClassType(instance) => instance,
+      _ => return Err(RloxError::ResolverError("'this' must be an instance of a class.".to_string())),
+    };
+
+    let method = superclass.find_method(&expr.method.lexeme)?;
+    let rlox_func = method.bind(&object);
+    Ok(RloxType::CallableType(Box::new(rlox_func)))
   }
 }
 
@@ -600,6 +664,38 @@ mod tests {
     let test_input: HashMap<&str, Rc<RloxError>> = [
       ("print this;", Rc::new(RloxError::ResolverError("Can't use 'this' outside of a class".to_string()))),
       ("fun notAMethod() { print this; }", Rc::new(RloxError::ResolverError("Can't use 'this' outside of a class".to_string()))),
+    ].iter().cloned().collect();
+
+    for (input, _) in test_input.into_iter() {
+      match run(input) {
+        Ok(_) => assert_eq!("value", "should not return"),
+        Err(_) => (),
+      }
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_super() -> Result<(), RloxError> {
+    let test_input: HashMap<&str, &str> = [
+      ("class Doughnut { cook() { return \"Fry until golden brown.\"; } cookAnother() { return \"Fry until golden.\"; } } class BostonCream < Doughnut { cookAnother() { var orig = super.cookAnother(); return orig + \" Then pipe full of custard and coat with chocolate.\"; } } var first = BostonCream().cook(); first;", "Fry until golden brown."),
+      ("class Doughnut { cook() { return \"Fry until golden brown.\"; } cookAnother() { return \"Fry until golden.\"; } } class BostonCream < Doughnut { cookAnother() { var orig = super.cookAnother(); return orig + \" Then pipe full of custard and coat with chocolate.\"; } } var first = BostonCream().cook(); var second = BostonCream().cookAnother(); second;", "Fry until golden. Then pipe full of custard and coat with chocolate."),
+    ].iter().cloned().collect();
+
+    for (&input, &expected_result) in test_input.iter() {
+      let val = run(input)?;
+      assert_eq!(val.to_string(), RloxType::StringType(expected_result.to_string()).to_string());
+    }
+
+    Ok(())
+  }
+
+  #[test]
+  fn test_invalid_use_of_super() -> Result<(), RloxError> {
+    let test_input: HashMap<&str, Rc<RloxError>> = [
+      ("super.cook();", Rc::new(RloxError::ResolverError("Can't use 'super' in a class with no superclass.".to_string()))),
+      ("fclass A { cook() { super.cook(); print \"blah\"; } }", Rc::new(RloxError::ResolverError("Can't use 'super' in a class with no superclass.".to_string()))),
     ].iter().cloned().collect();
 
     for (input, _) in test_input.into_iter() {

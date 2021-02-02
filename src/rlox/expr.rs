@@ -19,8 +19,9 @@ use crate::generate_ast;
 // unary          → ( "!" | "-" ) unary | call ;
 // call           → primary ( "(" arguments? ")" )* ;
 // arguments      → expression ( "," expression )* ;
-// primary        → NUMBER | STRING | "true" | "false" | "nil"
-//                | "(" expression ")" ;
+// primary        → "true" | "false" | "nil" | "this"
+//                | NUMBER | STRING | IDENTIFIER | "(" expression ")"
+//                | "super" "." IDENTIFIER ;
 
 pub type Exp<T> = Rc<RefCell<dyn Expr<T>>>;
 
@@ -34,6 +35,7 @@ generate_ast! {
     visit_literal_expr LiteralObj => value: Option<Literal>;
     visit_logical_expr Logical T => left: Exp<T>, operator: Token, right: Exp<T>;
     visit_set_expr Set T => object: Exp<T>, name: Token, value: Exp<T>;
+    visit_super_expr Super => keyword: Token, method: Token;
     visit_this_expr This => keyword: Token;
     visit_unary_expr Unary T => operator: Token, right: Exp<T>;
     visit_variable_expr Variable => name: Token;
@@ -131,6 +133,38 @@ impl Clone for This {
 }
 
 impl std::fmt::Display for This {
+  fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    write!(f, "this {}", self.keyword.lexeme)
+  }
+}
+
+impl PartialEq for Super {
+  fn eq(&self, other: &Self) -> bool {
+      // self.name.lexeme == other.name.lexeme
+      self.id == other.id
+  }
+}
+
+impl Eq for Super {}
+
+impl std::hash::Hash for Super {
+  fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+    // self.name.lexeme.hash(state);
+    self.id.hash(state);
+  }
+}
+
+impl Clone for Super {
+  fn clone(&self) -> Self {
+    Super {
+      keyword: self.keyword.clone(),
+      method: self.method.clone(),
+      id: self.id,
+    }
+  }
+}
+
+impl std::fmt::Display for Super {
   fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
     write!(f, "this {}", self.keyword.lexeme)
   }

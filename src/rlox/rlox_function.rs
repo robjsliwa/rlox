@@ -78,6 +78,10 @@ impl Callable for RloxFunction {
   fn name(&self) -> String {
     format!("<fn {} >", self.declaration.name.lexeme)
   }
+
+  fn as_any(&self) -> &dyn std::any::Any {
+    self
+  }
 }
 
 impl std::fmt::Debug for RloxFunction {

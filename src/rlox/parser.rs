@@ -238,6 +238,13 @@ impl Parser {
       ))));
     }
 
+    if self.token_match(vec![TokenType::SUPER]) {
+      let keyword = self.previous();
+      self.consume(TokenType::DOT, "Expect '.' after 'super'.")?;
+      let method = self.consume(TokenType::IDENTIFIER, "Expect superclass method name.")?;
+      return Ok(Rc::new(RefCell::new(Super::new(keyword, method))));
+    }
+
     if self.token_match(vec![TokenType::THIS]) {
       return Ok(Rc::new(RefCell::new(This::new(self.previous()))));
     }
@@ -482,17 +489,24 @@ impl Parser {
   }
 
   fn class_declaration<T: 'static>(&self) -> ParserStmtResult<T> {
-    let name = self.consume(TokenType::IDENTIFIER, "Expected class name.")?;
-    self.consume(TokenType::LEFTBRACE, "Expected '{' before class body.")?;
+    let name = self.consume(TokenType::IDENTIFIER, "Expect class name.")?;
+
+    let mut superclass: Option<Variable> = None;
+    if self.token_match(vec![TokenType::LESS]) {
+      self.consume(TokenType::IDENTIFIER, "Expect superclass name.")?;
+      superclass = Some(Variable::new(self.previous()));
+    }
+
+    self.consume(TokenType::LEFTBRACE, "Expect '{' before class body.")?;
 
     let mut methods = Vec::new();
     while !self.check(TokenType::RIGHTBRACE) && !self.is_at_end() {
       methods.push(self.function("method")?);
     }
 
-    self.consume(TokenType::RIGHTBRACE, "Expect '}' adter class body.")?;
+    self.consume(TokenType::RIGHTBRACE, "Expect '}' after class body.")?;
 
-    Ok(Rc::new(RefCell::new(Class::new(name, methods))))
+    Ok(Rc::new(RefCell::new(Class::new(name, superclass, methods))))
   }
 
   pub fn parse<T: 'static>(&self) -> Result<Vec<ParserStmt<T>>, RloxError> {

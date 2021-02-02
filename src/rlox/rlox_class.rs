@@ -13,18 +13,21 @@ use std::{
 };
 
 pub type RloxClassMethods = Rc<RefCell<HashMap<String, RloxFunction>>>;
+pub type RloxSuperClass = Rc<RefCell<Option<RloxClass>>>;
 
 #[derive(Clone, Debug, PartialEq)]
 pub struct RloxClass {
   name: String,
   methods: RloxClassMethods,
+  superclass: RloxSuperClass,
 }
 
 impl RloxClass {
-  pub fn new(name: &str, methods: RloxClassMethods) -> RloxClass {
+  pub fn new(name: &str, superclass: Option<RloxClass>, methods: RloxClassMethods) -> RloxClass {
     RloxClass {
       name: name.to_string(),
       methods,
+      superclass: Rc::new(RefCell::new(superclass)),
     }
   }
 
@@ -39,6 +42,10 @@ impl RloxClass {
         Some(m) => Ok(m.clone()),
         None => Err(RloxError::InterpreterError(format!("Interpreter internal error while looking for method {}.", name))),
       }
+    }
+
+    if let Some(superklass) = self.superclass.borrow().clone() {
+      return superklass.find_method(name);
     }
 
     Err(RloxError::InterpreterError(format!("Method {} not found.", name)))
@@ -63,5 +70,9 @@ impl Callable for RloxClass {
 
   fn name(&self) -> String {
     self.class_name()
+  }
+
+  fn as_any(&self) -> &dyn std::any::Any {
+    self
   }
 }

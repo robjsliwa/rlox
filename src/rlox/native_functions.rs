@@ -27,4 +27,8 @@ impl Callable for Clock {
   fn name(&self) -> String {
     String::from("<native clock function>")
   }
+
+  fn as_any(&self) -> &dyn std::any::Any {
+    self
+  }
 }
