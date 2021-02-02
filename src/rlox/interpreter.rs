@@ -690,4 +690,21 @@ mod tests {
 
     Ok(())
   }
+
+  #[test]
+  fn test_invalid_use_of_super() -> Result<(), RloxError> {
+    let test_input: HashMap<&str, Rc<RloxError>> = [
+      ("super.cook();", Rc::new(RloxError::ResolverError("Can't use 'super' in a class with no superclass.".to_string()))),
+      ("fclass A { cook() { super.cook(); print \"blah\"; } }", Rc::new(RloxError::ResolverError("Can't use 'super' in a class with no superclass.".to_string()))),
+    ].iter().cloned().collect();
+
+    for (input, _) in test_input.into_iter() {
+      match run(input) {
+        Ok(_) => assert_eq!("value", "should not return"),
+        Err(_) => (),
+      }
+    }
+
+    Ok(())
+  }
 }

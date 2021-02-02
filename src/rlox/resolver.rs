@@ -22,6 +22,7 @@ enum FunctionType {
 enum ClassType {
   None,
   Class,
+  SubClass,
 }
 
 #[derive(Clone)]
@@ -208,10 +209,11 @@ impl super::stmt::Visitor<RloxType> for Resolver {
       if stmt.name.lexeme == superclass.name.lexeme {
         return Err(RloxError::ResolverError("A class can't inherit from itself.".to_string()));
       }
+      self.current_class.replace(ClassType::SubClass);
       self.resolve_expr(Rc::new(RefCell::new(superclass)))?;
     }
 
-    if let Some(superklass) = &stmt.superclass {
+    if let Some(_superklass) = &stmt.superclass {
       self.begin_scope();
       let mut scopes = self.scopes.borrow_mut();
       if let Some(back_scope) = scopes.last_mut() {
@@ -346,6 +348,13 @@ impl super::expr::Visitor<RloxType> for Resolver {
   }
 
   fn visit_super_expr(&self, expr: &Super) -> Result<RloxType, RloxError> {
+    let current_class = self.current_class.borrow();
+    if *current_class == ClassType::None {
+      return Err(RloxError::ResolverError("Can't use 'super' outside of a class.".to_string()));
+    } else if *current_class != ClassType::SubClass {
+      return Err(RloxError::ResolverError("Can't use 'super' in a class with no superclass.".to_string()));
+    }
+
     self.resolve_local(VarExpr::SuperExpr(expr.clone()), expr.keyword.clone());
 
     Ok(RloxType::NullType)
